@@ -1,0 +1,7 @@
+.ionide
+.fable
+.fake
+bin
+obj
+
+local.settings.json
