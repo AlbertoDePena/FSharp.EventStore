@@ -9,7 +9,7 @@ type DomainError =
     | ValidationError of errorMessage : string           
     | RecordNotFound of description : string
     | ConcurrencyError of error : string
-    | DatabaseError
+    | DatabaseError of ex : Exception
 
 type Stream = {
     StreamId : int64

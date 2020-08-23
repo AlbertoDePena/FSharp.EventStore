@@ -14,6 +14,9 @@
                 // Do not generate summary otherwise it leads to duplicate errors in Problems panel
                 "/consoleloggerparameters:NoSummary"
             ],
+            "options": {
+                "cwd": "${workspaceFolder}/src"
+            },
             "group": "build",
             "presentation": {
                 "reveal": "silent"

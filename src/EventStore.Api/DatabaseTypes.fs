@@ -23,8 +23,8 @@ type Snapshot = {
     Version : int32
     Data : string
     Description : string    
-    CreatedAt : DateTimeOffset }   
-    
+    CreatedAt : DateTimeOffset }  
+
 type UniqueId = UniqueId of int64
 
 type StreamName = StreamName of string

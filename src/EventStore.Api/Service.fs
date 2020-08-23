@@ -4,89 +4,75 @@ open System
 open System.Data
 open EventStore.Extensions
 open EventStore.DataAccess
-open Microsoft.Extensions.Logging
+open FsToolkit.ErrorHandling
 
 type DependencyProvider = {
-    Logger : ILogger
     GetDbConnection : unit -> IDbConnection
-    GetStream : IDbConnection -> StreamName -> Async<Stream list>
-    GetSnapshots : IDbConnection -> StreamName -> Async<Snapshot list>
-    GetEvents : IDbConnection -> StreamName -> Version -> Async<Event list>
-    DeleteSnapshots : IDbConnection -> StreamName -> Async<unit>
+    GetStream : IDbConnection -> StreamName -> Async<Result<Stream option, exn>>
+    GetAllStreams : IDbConnection -> Async<Result<Stream list, exn>>
+    GetSnapshots : IDbConnection -> StreamName -> Async<Result<Snapshot list, exn>>
+    GetEvents : IDbConnection -> StreamName -> Version -> Async<Result<Event list, exn>>
+    DeleteSnapshots : IDbConnection -> StreamName -> Async<Result<unit, exn>>
 }
 
 [<RequireQualifiedAccess>]
 module Service =
 
-    let private toAsyncResult (logger : ILogger) computation = async {
-        let! choice = computation |> Async.Catch
+    let private validateStreamName =
+        Validation.validateStreamName
+        >> Result.mapError DomainError.ValidationError
+        >> Async.singleton
 
-        let result =
-            match choice with
-            | Choice1Of2 data -> Ok data
-            | Choice2Of2 error ->
-                logger.LogError(error, error.Message) 
-                Error DomainError.DatabaseError
+    let private validateVersion =
+        Validation.validateVersion
+        >> Result.mapError DomainError.ValidationError
+        >> Async.singleton        
+   
+    let getStream (dependency : DependencyProvider) streamName = asyncResult {   
+        let! streamName = validateStreamName streamName
+           
+        use connection = dependency.GetDbConnection ()
+        
+        let! result = 
+            dependency.GetStream connection streamName
+            |> AsyncResult.mapError DomainError.DatabaseError
 
         return result
     }
-   
-    let getStream (dependency : DependencyProvider) streamName = async {   
-        match Validation.validateStreamName streamName with
-        | Error error -> return Error (DomainError.ValidationError error)
-        | Ok streamName ->             
-            use connection = dependency.GetDbConnection ()
-            
-            let! result = 
-                dependency.GetStream connection streamName
-                |> (toAsyncResult dependency.Logger)
 
-            return result
-    }
-
-    let getSnapshots (dependency : DependencyProvider) streamName = async {  
-        match Validation.validateStreamName streamName with
-        | Error error -> return Error (DomainError.ValidationError error)
-        | Ok streamName ->                 
-            use connection = dependency.GetDbConnection ()
-            
-            let! result = 
-                dependency.GetSnapshots connection streamName
-                |> (toAsyncResult dependency.Logger)
-
-            return result
-    }
-
-    let getEvents (dependency : DependencyProvider) streamName startAtVersion = async {  
+    let getSnapshots (dependency : DependencyProvider) streamName = asyncResult {  
+        let! streamName = validateStreamName streamName
+           
+        use connection = dependency.GetDbConnection ()
         
-        let eventsQuery = result {
-            let! streamName = Validation.validateStreamName streamName
-            let! startAtVersion = Validation.validateVersion startAtVersion
+        let! result = 
+            dependency.GetSnapshots connection streamName
+            |> AsyncResult.mapError DomainError.DatabaseError
 
-            return (streamName, startAtVersion)
-        }
-
-        match eventsQuery with
-        | Error error -> return Error (DomainError.ValidationError error)
-        | Ok (streamName, startAtVersion) ->                 
-            use connection = dependency.GetDbConnection ()
-            
-            let! result = 
-                dependency.GetEvents connection streamName startAtVersion
-                |> (toAsyncResult dependency.Logger)
-
-            return result
+        return result
     }
 
-    let deleteSnapshots (dependency : DependencyProvider) streamName = async {
-        match Validation.validateStreamName streamName with
-        | Error error -> return Error (DomainError.ValidationError error)
-        | Ok streamName ->   
-            use connection = dependency.GetDbConnection ()
-            
-            let! result = 
-                dependency.DeleteSnapshots connection streamName
-                |> (toAsyncResult dependency.Logger)
+    let getEvents (dependency : DependencyProvider) streamName startAtVersion = asyncResult {          
+        let! streamName = validateStreamName streamName
+        let! startAtVersion = validateVersion startAtVersion
+              
+        use connection = dependency.GetDbConnection ()
+        
+        let! result = 
+            dependency.GetEvents connection streamName startAtVersion
+            |> AsyncResult.mapError DomainError.DatabaseError
 
-            return result
+        return result
+    }
+
+    let deleteSnapshots (dependency : DependencyProvider) streamName = asyncResult {
+        let! streamName = validateStreamName streamName
+           
+        use connection = dependency.GetDbConnection ()
+        
+        let! result = 
+            dependency.DeleteSnapshots connection streamName
+            |> AsyncResult.mapError DomainError.DatabaseError
+
+        return result
     }

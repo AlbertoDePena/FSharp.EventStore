@@ -48,36 +48,9 @@ module Strings =
 [<RequireQualifiedAccess>]
 module Async =
     
-    let singleton x = async {
-        return x
-    }
-
-    let map f (computation: Async<'t>) = async {
-        let! x = computation
-        return f x
-    }
-
-    let bind f (computation: Async<'t>) = async {
-        let! x = computation
-        return! f x
-    }
-    
     /// <summary>
     /// Async.StartAsTask and up-cast from Task<unit> to plain Task.
     /// </summary>
     /// <param name="task">The asynchronous computation.</param>
     let AsTask (task : Async<unit>) = Async.StartAsTask task :> Task
-
-[<AutoOpen>]
-module ResultComputationExpression =
-
-    type ResultBuilder() =
-        member __.Return(x) = Ok x
-
-        member __.Bind(x, f) = Result.bind f x
-
-        member __.ReturnFrom(x) = x
-
-        member this.Zero() = this.Return ()
-
-    let result = ResultBuilder()    
+   

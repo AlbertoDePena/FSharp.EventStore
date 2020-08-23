@@ -3,7 +3,7 @@ namespace EventStore.DataAccess
 open System
 open System.Data
 open Dapper
-open EventStore.Extensions
+open FsToolkit.ErrorHandling
 
 [<RequireQualifiedAccess>]
 module Repository =
@@ -20,8 +20,8 @@ module Repository =
         let param = {| StreamName = streamName |}
 
         connection.QuerySingleOrDefaultAsync<Stream>("dbo.GetStream", param, commandType = storedProcedure)
-        |> Async.AwaitTask
-        |> Async.map toOption
+        |> AsyncResult.ofTask
+        |> AsyncResult.map toOption
 
     let getAllStreams (connection : IDbConnection) =
         connection.QueryAsync<Stream>("dbo.GetAllStreams", commandType = storedProcedure)
@@ -32,22 +32,22 @@ module Repository =
         let param = {| StreamName = streamName; StartAtVersion = startAtVersion |}
 
         connection.QueryAsync<Event>("dbo.GetEvents", param, commandType = storedProcedure)
-        |> Async.AwaitTask
-        |> Async.map Seq.toList
+        |> AsyncResult.ofTask
+        |> AsyncResult.map Seq.toList
 
     let getSnapshots (connection : IDbConnection) (StreamName streamName) =
         let param = {| StreamName = streamName |}
 
         connection.QueryAsync<Snapshot>("dbo.GetSnapshots", param, commandType = storedProcedure)
-        |> Async.AwaitTask
-        |> Async.map Seq.toList
+        |> AsyncResult.ofTask
+        |> AsyncResult.map Seq.toList
 
     let addStream (connection : IDbConnection) (transaction : IDbTransaction) (stream : Stream) =
         let param = {| Name = stream.Name; Version = stream.Version |}
 
         connection.ExecuteScalarAsync<int64>("dbo.AddStream", param, transaction, commandType = storedProcedure)
-        |> Async.AwaitTask
-        |> Async.map UniqueId
+        |> AsyncResult.ofTask
+        |> AsyncResult.map UniqueId
 
     let addEvent (connection : IDbConnection) (transaction : IDbTransaction) (event : Event) =
         let param = {| 
@@ -57,8 +57,8 @@ module Repository =
             Version = event.Version |}
 
         connection.ExecuteScalarAsync<int64>("dbo.AddEvent", param, transaction, commandType = storedProcedure)
-        |> Async.AwaitTask
-        |> Async.map UniqueId
+        |> AsyncResult.ofTask
+        |> AsyncResult.map UniqueId
 
     let addSnapshot (connection : IDbConnection) (snapshot : Snapshot) =
         let param = {| 
@@ -68,19 +68,19 @@ module Repository =
             Version = snapshot.Version |}
 
         connection.ExecuteScalarAsync<int64>("dbo.AddSnapshot", param, commandType = storedProcedure)
-        |> Async.AwaitTask
-        |> Async.map UniqueId
+        |> AsyncResult.ofTask
+        |> AsyncResult.map UniqueId
 
     let deleteSnapshots (connection : IDbConnection) (StreamName streamName) =
         let param = {| StreamName = streamName |}
 
         connection.ExecuteAsync("dbo.DeleteSnapshots", param, commandType = storedProcedure)
-        |> Async.AwaitTask
-        |> Async.Ignore
+        |> AsyncResult.ofTask
+        |> AsyncResult.ignore
 
     let updateStream (connection : IDbConnection) (transaction : IDbTransaction) (stream : Stream) =
         let param = {| StreamId = stream.StreamId; Version = stream.Version |}
 
         connection.ExecuteAsync("dbo.UpdateStream", param, transaction, commandType = storedProcedure)
-        |> Async.AwaitTask
-        |> Async.Ignore
+        |> AsyncResult.ofTask
+        |> AsyncResult.ignore
