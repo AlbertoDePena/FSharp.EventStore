@@ -4,83 +4,109 @@ open System
 open System.Data
 open Dapper
 open FsToolkit.ErrorHandling
+open System.Data.SqlClient
 
 [<RequireQualifiedAccess>]
 module Repository =
 
+    let private toOption (x) =
+        if isNull (box x)
+        then None
+        else Some x
+
     let private storedProcedure = Nullable CommandType.StoredProcedure
 
-    let getStream (connection : IDbConnection) (StreamName streamName) =
+    let private getDbConnection (DbConnectionString dbConnectionString) =
+        let connection = new SqlConnection(dbConnectionString)
+        connection.Open()
+        connection :> IDbConnection
+
+    let getStream dbConnectionString : GetStream =
+        fun (StreamName streamName) ->                        
+            let param = {| StreamName = streamName |}
+
+            use connection = getDbConnection dbConnectionString
+
+            connection.QuerySingleOrDefaultAsync<Stream>("dbo.GetStream", param, commandType = storedProcedure)
+            |> AsyncResult.ofTask
+            |> AsyncResult.map toOption
+
+    let getAllStreams dbConnectionString : GetAllStreams =
+        fun () ->
+            use connection = getDbConnection dbConnectionString
             
-        let toOption (stream : Stream) =
-            if isNull (box stream)
-            then None
-            else Some stream
+            connection.QueryAsync<Stream>("dbo.GetAllStreams", commandType = storedProcedure)
+            |> AsyncResult.ofTask
+            |> AsyncResult.map Seq.toList
 
-        let param = {| StreamName = streamName |}
+    let getEvents dbConnectionString: GetEvents =
+        fun (StreamName streamName) (Version startAtVersion) ->
+            let param = {| StreamName = streamName; StartAtVersion = startAtVersion |}
 
-        connection.QuerySingleOrDefaultAsync<Stream>("dbo.GetStream", param, commandType = storedProcedure)
-        |> AsyncResult.ofTask
-        |> AsyncResult.map toOption
+            use connection = getDbConnection dbConnectionString
 
-    let getAllStreams (connection : IDbConnection) =
-        connection.QueryAsync<Stream>("dbo.GetAllStreams", commandType = storedProcedure)
-        |> Async.AwaitTask
-        |> Async.map Seq.toList
+            connection.QueryAsync<Event>("dbo.GetEvents", param, commandType = storedProcedure)
+            |> AsyncResult.ofTask
+            |> AsyncResult.map Seq.toList
 
-    let getEvents (connection : IDbConnection) (StreamName streamName) (Version startAtVersion) =
-        let param = {| StreamName = streamName; StartAtVersion = startAtVersion |}
+    let getSnapshots dbConnectionString : GetSnapshots =
+        fun (StreamName streamName) ->
+            let param = {| StreamName = streamName |}
 
-        connection.QueryAsync<Event>("dbo.GetEvents", param, commandType = storedProcedure)
-        |> AsyncResult.ofTask
-        |> AsyncResult.map Seq.toList
+            use connection = getDbConnection dbConnectionString
 
-    let getSnapshots (connection : IDbConnection) (StreamName streamName) =
-        let param = {| StreamName = streamName |}
+            connection.QueryAsync<Snapshot>("dbo.GetSnapshots", param, commandType = storedProcedure)
+            |> AsyncResult.ofTask
+            |> AsyncResult.map Seq.toList
 
-        connection.QueryAsync<Snapshot>("dbo.GetSnapshots", param, commandType = storedProcedure)
-        |> AsyncResult.ofTask
-        |> AsyncResult.map Seq.toList
+    let createSnapshot dbConnectionString : CreateSnapshot =
+        fun snapshot ->
+            let param = {| 
+                StreamId = snapshot.StreamId
+                Description = snapshot.Description
+                Data = snapshot.Data
+                Version = snapshot.Version |}
 
-    let addStream (connection : IDbConnection) (transaction : IDbTransaction) (stream : Stream) =
-        let param = {| Name = stream.Name; Version = stream.Version |}
+            use connection = getDbConnection dbConnectionString
 
-        connection.ExecuteScalarAsync<int64>("dbo.AddStream", param, transaction, commandType = storedProcedure)
-        |> AsyncResult.ofTask
-        |> AsyncResult.map UniqueId
+            connection.ExecuteScalarAsync<int64>("dbo.CreateSnapshot", param, commandType = storedProcedure)
+            |> AsyncResult.ofTask
+            |> AsyncResult.ignore
 
-    let addEvent (connection : IDbConnection) (transaction : IDbTransaction) (event : Event) =
-        let param = {| 
-            StreamId = event.StreamId
-            Type = event.Type
-            Data = event.Data
-            Version = event.Version |}
+    let deleteSnapshots dbConnectionString : DeleteSnapshots =
+        fun (StreamName streamName) ->
+            let param = {| StreamName = streamName |}
 
-        connection.ExecuteScalarAsync<int64>("dbo.AddEvent", param, transaction, commandType = storedProcedure)
-        |> AsyncResult.ofTask
-        |> AsyncResult.map UniqueId
+            use connection = getDbConnection dbConnectionString
 
-    let addSnapshot (connection : IDbConnection) (snapshot : Snapshot) =
-        let param = {| 
-            StreamId = snapshot.StreamId
-            Description = snapshot.Description
-            Data = snapshot.Data
-            Version = snapshot.Version |}
+            connection.ExecuteAsync("dbo.DeleteSnapshots", param, commandType = storedProcedure)
+            |> AsyncResult.ofTask
+            |> AsyncResult.ignore
 
-        connection.ExecuteScalarAsync<int64>("dbo.AddSnapshot", param, commandType = storedProcedure)
-        |> AsyncResult.ofTask
-        |> AsyncResult.map UniqueId
+    let appendEvents dbConnectionString : AppendEvents =
+        fun stream events ->
 
-    let deleteSnapshots (connection : IDbConnection) (StreamName streamName) =
-        let param = {| StreamName = streamName |}
+            use dt = new DataTable("NewEvents")
 
-        connection.ExecuteAsync("dbo.DeleteSnapshots", param, commandType = storedProcedure)
-        |> AsyncResult.ofTask
-        |> AsyncResult.ignore
+            dt.Columns.Add("EventId", typedefof<string>) |> ignore
+            dt.Columns.Add("StreamId", typedefof<string>) |> ignore
+            dt.Columns.Add("Type", typedefof<string>) |> ignore
+            dt.Columns.Add("Data", typedefof<string>) |> ignore
+            dt.Columns.Add("Version", typedefof<int32>) |> ignore
 
-    let updateStream (connection : IDbConnection) (transaction : IDbTransaction) (stream : Stream) =
-        let param = {| StreamId = stream.StreamId; Version = stream.Version |}
+            events
+            |> List.iter (fun e -> 
+                dt.Rows.Add(
+                    e.EventId, e.StreamId, e.Type, e.Data, e.Version) |> ignore)
 
-        connection.ExecuteAsync("dbo.UpdateStream", param, transaction, commandType = storedProcedure)
-        |> AsyncResult.ofTask
-        |> AsyncResult.ignore
+            let param = {|
+                StreamId = stream.StreamId
+                StreamName = stream.Name
+                Version = stream.Version
+                NewEvents = dt.AsTableValuedParameter("NewEvents") |}
+
+            use connection = getDbConnection dbConnectionString
+
+            connection.ExecuteAsync("dbo.AppendEvents", param, commandType = storedProcedure)
+            |> AsyncResult.ofTask
+            |> AsyncResult.ignore           

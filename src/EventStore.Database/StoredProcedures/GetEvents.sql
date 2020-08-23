@@ -8,7 +8,7 @@ AS
 BEGIN
 	SELECT [Events].[EventId], [Events].[StreamId], [Events].[Type], [Events].[Version], [Events].[Data], [Events].[CreatedAt]
     FROM [dbo].[Events]
-    JOIN [dbo].[Streams]
+    INNER JOIN [dbo].[Streams]
     ON [Events].[StreamId] = [Streams].[StreamId]
     WHERE [Streams].[Name] = @StreamName
     AND [Events].[Version] >= @StartAtVersion

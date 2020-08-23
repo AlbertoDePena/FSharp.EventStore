@@ -15,15 +15,13 @@
 
   <ItemGroup>
     <EmbeddedResource Include="SqlScripts\1-Initial.sql" />
-    <EmbeddedResource Include="StoredProcedures\AddEvent.sql" />
-    <EmbeddedResource Include="StoredProcedures\AddSnapshot.sql" />
-    <EmbeddedResource Include="StoredProcedures\AddStream.sql" />
+    <EmbeddedResource Include="StoredProcedures\CreateSnapshot.sql" />
+    <EmbeddedResource Include="StoredProcedures\AppendEvents.sql" />
     <EmbeddedResource Include="StoredProcedures\DeleteSnapshots.sql" />
     <EmbeddedResource Include="StoredProcedures\GetAllStreams.sql" />
     <EmbeddedResource Include="StoredProcedures\GetEvents.sql" />
     <EmbeddedResource Include="StoredProcedures\GetSnapshots.sql" />
     <EmbeddedResource Include="StoredProcedures\GetStream.sql" />
-    <EmbeddedResource Include="StoredProcedures\UpdateStream.sql" />
   </ItemGroup>
 
   <ItemGroup>
