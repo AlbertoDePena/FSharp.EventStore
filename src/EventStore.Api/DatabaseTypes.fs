@@ -3,23 +3,23 @@ namespace EventStore.DataAccess
 open System
 
 type Stream = {
-    StreamId : int64
+    StreamId : string
     Version : int32
     Name : string
     CreatedAt : DateTimeOffset
     UpdatedAt : DateTimeOffset Nullable }
 
 type Event = {
-    EventId : int64
-    StreamId : int64
+    EventId : string
+    StreamId : string
     Version : int32
     Data : string
     Type : string    
     CreatedAt : DateTimeOffset }
 
 type Snapshot = {
-    SnapshotId : int64
-    StreamId : int64
+    SnapshotId : string
+    StreamId : string
     Version : int32
     Data : string
     Description : string    

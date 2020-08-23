@@ -3,12 +3,13 @@ namespace EventStore.Domain
 open System
 open EventStore.Extensions
 open EventStore.DataAccess
+open FsToolkit.ErrorHandling
 
 [<RequireQualifiedAccess>]
 type DomainError =
     | ValidationError of errorMessage : string           
-    | RecordNotFound of description : string
-    | ConcurrencyError of error : string
+    | StreamNotFound of streamName : string
+    | InvalidVersion
     | DatabaseError of ex : Exception
 
 type Stream = {
@@ -43,7 +44,7 @@ type AppendEvents = {
     StreamName : string
     Events : NewEvent list }
 
-type AddSnapshot = {
+type CreateSnapshot = {
     StreamName : string
     Description : string
     Data : string }
@@ -51,13 +52,27 @@ type AddSnapshot = {
 [<RequireQualifiedAccess>] 
 module Validation =
 
-    let validateStreamName (StreamName streamName) =
-        let propertyName = "Stream Name"
-        Strings.createRequired propertyName streamName
-        |> Result.bind (Strings.validateMaxLength propertyName 256)
-        |> Result.map StreamName
+    let private toOption value =
+        if String.IsNullOrWhiteSpace(value) then
+           None
+        else Some value
 
-    let validateVersion (Version version) =
+    let string256 =
+        toOption >> Option.filter (fun x -> x.Length = 256)
+
+    let checkVersion (Version version) =
         if version < 0
         then Error "The provided version is not valid"
         else Ok (Version version)
+
+    let validateSnapshot (snapshot : CreateSnapshot) = result {
+        let! streamName = 
+            string256 snapshot.StreamName
+            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
+
+        let! description =
+            string256 snapshot.Description
+            |> Result.requireSome "Snapshot description is required and it must be at most 256 characters"
+
+        return { snapshot with StreamName = streamName; Description = description }
+    }        
