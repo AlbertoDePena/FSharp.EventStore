@@ -57,8 +57,14 @@ module Validation =
            None
         else Some value
 
-    let string256 =
+    let private string256 =
         toOption >> Option.filter (fun x -> x.Length = 256)
+
+    let checkStreamName (StreamName streamName) =
+        streamName
+        |> string256
+        |> Option.map StreamName
+        |> Result.requireSome "Stream name is required and it must be at most 256 characters"
 
     let checkVersion (Version version) =
         if version < 0

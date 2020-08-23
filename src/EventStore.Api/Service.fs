@@ -8,13 +8,10 @@ open FsToolkit.ErrorHandling
 [<RequireQualifiedAccess>]
 module Service =
 
-    let private validateStreamName (StreamName streamName) =
-        streamName
-        |> Validation.string256
-        |> Option.map StreamName
-        |> Result.requireSome "Stream name is required and it must be at most 256 characters"
-        |> Result.mapError DomainError.ValidationError
-        |> Async.singleton
+    let private checkStreamName =
+        Validation.checkStreamName
+        >> Result.mapError DomainError.ValidationError
+        >> Async.singleton
 
     let private checkVersion =
         Validation.checkVersion
@@ -26,15 +23,15 @@ module Service =
         |> AsyncResult.mapError DomainError.DatabaseError
 
     let getStream (getStream : EventStore.DataAccess.GetStream) streamName = 
-        validateStreamName streamName
+        checkStreamName streamName
         |> AsyncResult.bind (getStream >> AsyncResult.mapError DomainError.DatabaseError)
 
     let getSnapshots (getSnapshots : EventStore.DataAccess.GetSnapshots) streamName = 
-        validateStreamName streamName
+        checkStreamName streamName
         |> AsyncResult.bind (getSnapshots >> AsyncResult.mapError DomainError.DatabaseError)
 
     let getEvents (getEvents : EventStore.DataAccess.GetEvents) streamName startAtVersion = asyncResult {          
-        let! streamName = validateStreamName streamName
+        let! streamName = checkStreamName streamName
         let! startAtVersion = checkVersion startAtVersion
               
         let! result = 
@@ -45,7 +42,7 @@ module Service =
     }
 
     let deleteSnapshots (deleteSnapshots : EventStore.DataAccess.DeleteSnapshots) streamName = 
-        validateStreamName streamName
+        checkStreamName streamName
         |> AsyncResult.bind (deleteSnapshots >> AsyncResult.mapError DomainError.DatabaseError)
 
     let createSnapshot 
