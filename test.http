@@ -22,3 +22,14 @@ Content-Type: application/json
     "description": "This is a test",
     "streamName": "Test"
 }
+
+###
+POST http://localhost:7071/api/AppendEvents
+Content-Type: application/json
+
+{
+    "streamName": "Test",
+    "events": [{
+        "type": "Test", "data": "blahblah"
+    }]
+}

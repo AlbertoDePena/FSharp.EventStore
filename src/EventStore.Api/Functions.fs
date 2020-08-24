@@ -22,7 +22,7 @@ type NewEventDto = {
 type AppendEventsDto = {
     ExpectedVersion : int32
     StreamName : string
-    Events : NewEventDto list }
+    Events : NewEventDto array }
 
 [<CLIMutable>]
 type CreateSnapshotDto = {
@@ -60,7 +60,12 @@ module CompositionRoot =
     let createSnapshot (model : UnvalidatedCreateSnapshot) =
         let getStream = Repository.getStream dbConnectionString
         let createSnapshot = Repository.createSnapshot dbConnectionString
-        Service.createSnapshot getStream createSnapshot model       
+        Service.createSnapshot getStream createSnapshot model  
+        
+    let appendEvents (model : UnvalidatedAppendEvents) =
+        let getStream = Repository.getStream dbConnectionString
+        let appendEvents = Repository.appendEvents dbConnectionString
+        Service.appendEvents getStream appendEvents model            
         
 [<RequireQualifiedAccess>]
 module Functions =
@@ -153,5 +158,29 @@ module Functions =
         |> Async.AwaitTask
         |> Async.map (JsonConvert.DeserializeObject<CreateSnapshotDto> >> toModel)
         |> Async.bind CompositionRoot.createSnapshot
+        |> (toActionResult logger)
+        |> Async.StartAsTask 
+
+    [<FunctionName("AppendEvents")>]
+    let AppendEvents 
+        ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
+        (logger: ILogger) =
+        
+        let toEventModel (dto : NewEventDto) : UnvalidatedNewEvent = {
+            Type = dto.Type
+            Data = dto.Data
+        }
+
+        let toModel (dto : AppendEventsDto) : UnvalidatedAppendEvents = { 
+            Events = dto.Events |> Array.map toEventModel |> Array.toList
+            ExpectedVersion = dto.ExpectedVersion
+            StreamName = dto.StreamName }
+
+        use reader = new StreamReader(request.Body)
+
+        reader.ReadToEndAsync() 
+        |> Async.AwaitTask
+        |> Async.map (JsonConvert.DeserializeObject<AppendEventsDto> >> toModel)
+        |> Async.bind CompositionRoot.appendEvents
         |> (toActionResult logger)
         |> Async.StartAsTask 

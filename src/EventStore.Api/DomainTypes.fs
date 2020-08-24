@@ -174,7 +174,7 @@ module Mapper =
         return { Type = eventType; Data = data }
     }
 
-    let toAppendEvents (appendEvents : UnvalidatedAppendEvents) : Result<AppendEvents, string> = result {
+    let toAppendEvents (appendEvents : UnvalidatedAppendEvents) : Result<AppendEvents, string> = result {        
         let! streamName = 
             String256.create appendEvents.StreamName
             |> Result.requireSome "Stream name is required and it must be at most 256 characters"
@@ -183,10 +183,12 @@ module Mapper =
             NonNegativeInt.create appendEvents.ExpectedVersion
             |> Result.requireSome "Stream version is not valid"
 
+        do! appendEvents.Events |> Result.requireNotEmpty "Cannot append to stream without events" 
+
         let! events = 
             appendEvents.Events 
             |> List.traverseResultM toNewEvent
-
+            
         return { StreamName = streamName; Events = events; ExpectedVersion = version }
     }
 

@@ -107,6 +107,7 @@ module internal Database =
 
     let createSnapshot dbConnectionString (snapshot : Snapshot) = async {
         let param = {| 
+            SnapshotId = snapshot.SnapshotId
             StreamId = snapshot.StreamId
             Description = snapshot.Description
             Data = snapshot.Data
@@ -136,7 +137,7 @@ module internal Database =
     }
 
     let appendEvents dbConnectionString (stream : Stream) (events : Event list) = async {
-        use dt = new DataTable("NewEvents")
+        use dt = new DataTable("NewEvent")
 
         dt.Columns.Add("EventId", typedefof<string>) |> ignore
         dt.Columns.Add("StreamId", typedefof<string>) |> ignore
@@ -153,7 +154,7 @@ module internal Database =
             StreamId = stream.StreamId
             StreamName = stream.Name
             Version = stream.Version
-            NewEvents = dt.AsTableValuedParameter("NewEvents") |}
+            NewEvents = dt.AsTableValuedParameter("NewEvent") |}
 
         use connection = getDbConnection dbConnectionString
 
