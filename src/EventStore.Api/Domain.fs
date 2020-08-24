@@ -11,25 +11,30 @@ module Service =
     let private createUniqueId () =
         Guid.NewGuid().ToString("D")
 
-    let getAllStreams (getAllStreams : EventStore.DataAccess.GetAllStreams) = 
+    let getAllStreams (getAllStreams : Repository.GetAllStreams) = 
         getAllStreams ()
         |> AsyncResult.mapError DomainError.DatabaseError
 
-    let getStream (getStream : EventStore.DataAccess.GetStream) (query : UnvalidatedStreamQuery) =
+    let getStream (getStream : Repository.GetStream) (query : UnvalidatedStreamQuery) =
+        let getStream =
+            getStream
+            >> AsyncResult.mapError DomainError.DatabaseError
+            >> AsyncResult.bind (Async.singleton >> AsyncResult.requireSome DomainError.StreamNotFound)
+
         Mapper.toStreamQuery query
         |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
         |> Result.mapError DomainError.ValidationError
         |> Async.singleton
-        |> AsyncResult.bind (getStream >> AsyncResult.mapError DomainError.DatabaseError)
+        |> AsyncResult.bind getStream
 
-    let getSnapshots (getSnapshots : EventStore.DataAccess.GetSnapshots) (query : UnvalidatedSnapshotsQuery) =
+    let getSnapshots (getSnapshots : Repository.GetSnapshots) (query : UnvalidatedSnapshotsQuery) =
         Mapper.toSnapshotsQuery query
         |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
         |> Result.mapError DomainError.ValidationError
         |> Async.singleton
         |> AsyncResult.bind (getSnapshots >> AsyncResult.mapError DomainError.DatabaseError)
 
-    let getEvents (getEvents : EventStore.DataAccess.GetEvents) (query : UnvalidatedEventsQuery) = asyncResult {                 
+    let getEvents (getEvents : Repository.GetEvents) (query : UnvalidatedEventsQuery) = asyncResult {                 
         let! (streamName, startAtVersion) =
             Mapper.toEventsQuery query
             |> Result.map (fun q -> String256.value q.StreamName |> StreamName, NonNegativeInt.value q.StartAtVersion |> Version)
@@ -42,7 +47,7 @@ module Service =
         return result
     }
 
-    let deleteSnapshots (deleteSnapshots : EventStore.DataAccess.DeleteSnapshots) (query : UnvalidatedSnapshotsQuery) =
+    let deleteSnapshots (deleteSnapshots : Repository.DeleteSnapshots) (query : UnvalidatedSnapshotsQuery) =
         Mapper.toSnapshotsQuery query
         |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
         |> Result.mapError DomainError.ValidationError

@@ -72,7 +72,7 @@ module Timestamp =
 [<RequireQualifiedAccess>]
 type DomainError =
     | ValidationError of errorMessage : string           
-    | StreamNotFound of streamName : string
+    | StreamNotFound
     | InvalidVersion
     | DatabaseError of ex : Exception
 

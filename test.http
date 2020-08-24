@@ -2,7 +2,7 @@
 GET http://localhost:7071/api/GetAllStreams
 
 ###
-GET http://localhost:7071/api/GetStream?streamName=Test1
+GET http://localhost:7071/api/GetStream?streamName=Test
 
 ###
 GET http://localhost:7071/api/GetEvents?streamName=Test&startAtVersion=0
