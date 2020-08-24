@@ -14,6 +14,32 @@ open FsToolkit.ErrorHandling
 open System.IO
 
 [<CLIMutable>]
+type StreamDto = {
+    StreamId : string
+    Version : int32
+    Name : string
+    CreatedAt : DateTimeOffset
+    UpdatedAt : DateTimeOffset Nullable }
+
+[<CLIMutable>]    
+type EventDto = {
+    EventId : string
+    StreamId : string
+    Version : int32
+    Data : string
+    Type : string    
+    CreatedAt : DateTimeOffset }
+
+[<CLIMutable>]
+type SnapshotDto = {
+    SnapshotId : string
+    StreamId : string
+    Version : int32
+    Data : string
+    Description : string    
+    CreatedAt : DateTimeOffset }
+
+[<CLIMutable>]
 type NewEventDto = {
     Data : string
     Type : string }
@@ -31,44 +57,11 @@ type CreateSnapshotDto = {
     Data : string }
 
 [<RequireQualifiedAccess>]
-module CompositionRoot =
+module Functions =
 
     let dbConnectionString = 
         Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
         |> DbConnectionString
-
-    let getAllStreams () =
-        let getAllStreams = Repository.getAllStreams dbConnectionString
-        Service.getAllStreams getAllStreams
-
-    let getStream (query : UnvalidatedStreamQuery) =
-        let getStream = Repository.getStream dbConnectionString
-        Service.getStream getStream query
-
-    let getEvents (query : UnvalidatedEventsQuery) =
-        let getEvents = Repository.getEvents dbConnectionString
-        Service.getEvents getEvents query  
-        
-    let getSnapshots (query : UnvalidatedSnapshotsQuery) =
-        let getSnapshots = Repository.getSnapshots dbConnectionString
-        Service.getSnapshots getSnapshots query  
-        
-    let deleteSnapshots (query : UnvalidatedSnapshotsQuery) =
-        let deleteSnapshots = Repository.deleteSnapshots dbConnectionString
-        Service.deleteSnapshots deleteSnapshots query  
-
-    let createSnapshot (model : UnvalidatedCreateSnapshot) =
-        let getStream = Repository.getStream dbConnectionString
-        let createSnapshot = Repository.createSnapshot dbConnectionString
-        Service.createSnapshot getStream createSnapshot model  
-        
-    let appendEvents (model : UnvalidatedAppendEvents) =
-        let getStream = Repository.getStream dbConnectionString
-        let appendEvents = Repository.appendEvents dbConnectionString
-        Service.appendEvents getStream appendEvents model            
-        
-[<RequireQualifiedAccess>]
-module Functions =
 
     let toActionResult (logger : ILogger) asyncResult = async {
         let! result = asyncResult
@@ -92,8 +85,13 @@ module Functions =
     let GetAllStreams 
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
-        CompositionRoot.getAllStreams ()
-        |> AsyncResult.map JsonConvert.SerializeObject
+
+        let getAllStreams () =
+            dbConnectionString
+            |> Repository.getAllStreams 
+            |> Service.getAllStreams
+
+        getAllStreams ()
         |> (toActionResult logger)
         |> Async.StartAsTask
         
@@ -101,10 +99,15 @@ module Functions =
     let GetStream 
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
+
+        let getStream (query : UnvalidatedStreamQuery) =
+            let getStream = Repository.getStream dbConnectionString
+            Service.getStream getStream query
+            
         let streamName = request.TryGetQueryStringValue "streamName" |> Option.defaultValue String.Empty
         let query : UnvalidatedStreamQuery = { StreamName = streamName } 
 
-        CompositionRoot.getStream query
+        getStream query
         |> (toActionResult logger)
         |> Async.StartAsTask 
         
@@ -112,10 +115,15 @@ module Functions =
     let GetSnapshots 
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
+
+        let getSnapshots (query : UnvalidatedSnapshotsQuery) =
+            let getSnapshots = Repository.getSnapshots dbConnectionString
+            Service.getSnapshots getSnapshots query  
+
         let streamName = request.TryGetQueryStringValue "streamName" |> Option.defaultValue String.Empty
         let query : UnvalidatedSnapshotsQuery = { StreamName = streamName } 
 
-        CompositionRoot.getSnapshots query
+        getSnapshots query
         |> (toActionResult logger)
         |> Async.StartAsTask     
         
@@ -123,11 +131,16 @@ module Functions =
     let GetEvents 
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
+
+        let getEvents (query : UnvalidatedEventsQuery) =
+            let getEvents = Repository.getEvents dbConnectionString
+            Service.getEvents getEvents query
+
         let streamName = request.TryGetQueryStringValue "streamName" |> Option.defaultValue String.Empty
         let startAtVersion = request.TryGetQueryStringValue "startAtVersion" |> Option.map int32 |> Option.defaultValue 0
         let query : UnvalidatedEventsQuery = { StreamName = streamName; StartAtVersion = startAtVersion } 
 
-        CompositionRoot.getEvents query
+        getEvents query
         |> (toActionResult logger)
         |> Async.StartAsTask              
 
@@ -135,10 +148,15 @@ module Functions =
     let DeleteSnapshots 
         ([<HttpTrigger(AuthorizationLevel.Function, "delete", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
+
+        let deleteSnapshots (query : UnvalidatedSnapshotsQuery) =
+            let deleteSnapshots = Repository.deleteSnapshots dbConnectionString
+            Service.deleteSnapshots deleteSnapshots query 
+
         let streamName = request.TryGetQueryStringValue "streamName" |> Option.defaultValue String.Empty
         let query : UnvalidatedSnapshotsQuery = { StreamName = streamName } 
 
-        CompositionRoot.deleteSnapshots query
+        deleteSnapshots query
         |> (toActionResult logger)
         |> Async.StartAsTask   
         
@@ -147,6 +165,11 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
         
+        let createSnapshot (model : UnvalidatedCreateSnapshot) =
+            let getStream = Repository.getStream dbConnectionString
+            let createSnapshot = Repository.createSnapshot dbConnectionString
+            Service.createSnapshot getStream createSnapshot model  
+
         let toModel (dto : CreateSnapshotDto) : UnvalidatedCreateSnapshot = { 
             Data = dto.Data
             Description = dto.Description
@@ -157,7 +180,7 @@ module Functions =
         reader.ReadToEndAsync() 
         |> Async.AwaitTask
         |> Async.map (JsonConvert.DeserializeObject<CreateSnapshotDto> >> toModel)
-        |> Async.bind CompositionRoot.createSnapshot
+        |> Async.bind createSnapshot
         |> (toActionResult logger)
         |> Async.StartAsTask 
 
@@ -166,10 +189,14 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
         
+        let appendEvents (model : UnvalidatedAppendEvents) =
+            let getStream = Repository.getStream dbConnectionString
+            let appendEvents = Repository.appendEvents dbConnectionString
+            Service.appendEvents getStream appendEvents model  
+
         let toEventModel (dto : NewEventDto) : UnvalidatedNewEvent = {
             Type = dto.Type
-            Data = dto.Data
-        }
+            Data = dto.Data }
 
         let toModel (dto : AppendEventsDto) : UnvalidatedAppendEvents = { 
             Events = dto.Events |> Array.map toEventModel |> Array.toList
@@ -181,6 +208,6 @@ module Functions =
         reader.ReadToEndAsync() 
         |> Async.AwaitTask
         |> Async.map (JsonConvert.DeserializeObject<AppendEventsDto> >> toModel)
-        |> Async.bind CompositionRoot.appendEvents
+        |> Async.bind appendEvents
         |> (toActionResult logger)
         |> Async.StartAsTask 

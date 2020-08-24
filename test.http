@@ -5,7 +5,7 @@ GET http://localhost:7071/api/GetAllStreams
 GET http://localhost:7071/api/GetStream?streamName=Test
 
 ###
-GET http://localhost:7071/api/GetEvents?streamName=Test&startAtVersion=0
+GET http://localhost:7071/api/GetEvents?streamName=Test1&startAtVersion=0
 
 ###
 GET http://localhost:7071/api/GetSnapshots?streamName=Test
@@ -28,7 +28,8 @@ POST http://localhost:7071/api/AppendEvents
 Content-Type: application/json
 
 {
-    "streamName": "Test",
+    "streamName": "Test1",
+    "expectedVersion": 0,
     "events": [{
         "type": "Test", "data": "blahblah"
     }]
