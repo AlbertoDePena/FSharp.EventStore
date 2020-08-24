@@ -8,6 +8,6 @@ module Async =
     /// <summary>
     /// Async.StartAsTask and up-cast from Task<unit> to plain Task.
     /// </summary>
-    /// <param name="task">The asynchronous computation.</param>
-    let AsTask (task : Async<unit>) = Async.StartAsTask task :> Task
+    /// <param name="computation">The asynchronous computation.</param>
+    let AsTask (computation : Async<unit>) = Async.StartAsTask computation :> Task
    

@@ -17,7 +17,7 @@ module Repository =
         connection :> IDbConnection
 
     let getStream dbConnectionString : GetStream =
-        fun (StreamName streamName) ->   
+        fun (StreamName streamName) -> asyncResult {
             let toOption (x : Stream) =
                 if isNull (box x)
                 then None
@@ -27,40 +27,56 @@ module Repository =
 
             use connection = getDbConnection dbConnectionString
 
-            connection.QuerySingleOrDefaultAsync<Stream>("dbo.GetStream", param, commandType = storedProcedure)
-            |> AsyncResult.ofTask
-            |> AsyncResult.map toOption
+            let! result =
+                connection.QuerySingleOrDefaultAsync<Stream>("dbo.GetStream", param, commandType = storedProcedure)
+                |> AsyncResult.ofTask
+                |> AsyncResult.map toOption
 
+            return result
+        }
+         
     let getAllStreams dbConnectionString : GetAllStreams =
-        fun () ->
+        fun () -> asyncResult {
             use connection = getDbConnection dbConnectionString
-            
-            connection.QueryAsync<Stream>("dbo.GetAllStreams", commandType = storedProcedure)
-            |> AsyncResult.ofTask
-            |> AsyncResult.map Seq.toList
 
+            let! result =
+                connection.QueryAsync<Stream>("dbo.GetAllStreams", commandType = storedProcedure)
+                |> AsyncResult.ofTask
+                |> AsyncResult.map Seq.toList
+
+            return result
+        }
+          
     let getEvents dbConnectionString: GetEvents =
-        fun (StreamName streamName) (Version startAtVersion) ->
+        fun (StreamName streamName) (Version startAtVersion) -> asyncResult {
             let param = {| StreamName = streamName; StartAtVersion = startAtVersion |}
 
             use connection = getDbConnection dbConnectionString
 
-            connection.QueryAsync<Event>("dbo.GetEvents", param, commandType = storedProcedure)
-            |> AsyncResult.ofTask
-            |> AsyncResult.map Seq.toList
+            let! result =
+                connection.QueryAsync<Event>("dbo.GetEvents", param, commandType = storedProcedure)
+                |> AsyncResult.ofTask
+                |> AsyncResult.map Seq.toList
+             
+            return result
+        }
 
     let getSnapshots dbConnectionString : GetSnapshots =
-        fun (StreamName streamName) ->
+        fun (StreamName streamName) -> asyncResult {
             let param = {| StreamName = streamName |}
 
             use connection = getDbConnection dbConnectionString
 
-            connection.QueryAsync<Snapshot>("dbo.GetSnapshots", param, commandType = storedProcedure)
-            |> AsyncResult.ofTask
-            |> AsyncResult.map Seq.toList
+            let! result =
+                connection.QueryAsync<Snapshot>("dbo.GetSnapshots", param, commandType = storedProcedure)
+                |> AsyncResult.ofTask
+                |> AsyncResult.map Seq.toList
+
+            return result                
+        }
 
     let createSnapshot dbConnectionString : CreateSnapshot =
-        fun snapshot ->
+        fun snapshot -> asyncResult {
             let param = {| 
                 StreamId = snapshot.StreamId
                 Description = snapshot.Description
@@ -69,22 +85,30 @@ module Repository =
 
             use connection = getDbConnection dbConnectionString
 
-            connection.ExecuteScalarAsync<int64>("dbo.CreateSnapshot", param, commandType = storedProcedure)
-            |> AsyncResult.ofTask
-            |> AsyncResult.ignore
+            let! result =
+                connection.ExecuteScalarAsync<int64>("dbo.CreateSnapshot", param, commandType = storedProcedure)
+                |> AsyncResult.ofTask
+                |> AsyncResult.ignore
+
+            return result
+        }
 
     let deleteSnapshots dbConnectionString : DeleteSnapshots =
-        fun (StreamName streamName) ->
+        fun (StreamName streamName) -> asyncResult {
             let param = {| StreamName = streamName |}
 
             use connection = getDbConnection dbConnectionString
 
-            connection.ExecuteAsync("dbo.DeleteSnapshots", param, commandType = storedProcedure)
-            |> AsyncResult.ofTask
-            |> AsyncResult.ignore
+            let! result =
+                connection.ExecuteAsync("dbo.DeleteSnapshots", param, commandType = storedProcedure)
+                |> AsyncResult.ofTask
+                |> AsyncResult.ignore
+
+            return result                    
+        }
 
     let appendEvents dbConnectionString : AppendEvents =
-        fun stream events ->
+        fun stream events -> asyncResult {
             use dt = new DataTable("NewEvents")
 
             dt.Columns.Add("EventId", typedefof<string>) |> ignore
@@ -106,6 +130,10 @@ module Repository =
 
             use connection = getDbConnection dbConnectionString
 
-            connection.ExecuteAsync("dbo.AppendEvents", param, commandType = storedProcedure)
-            |> AsyncResult.ofTask
-            |> AsyncResult.ignore           
+            let! result =
+                connection.ExecuteAsync("dbo.AppendEvents", param, commandType = storedProcedure)
+                |> AsyncResult.ofTask
+                |> AsyncResult.ignore           
+
+            return result
+        }

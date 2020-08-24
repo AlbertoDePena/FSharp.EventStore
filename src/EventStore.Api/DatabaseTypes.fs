@@ -2,6 +2,7 @@ namespace EventStore.DataAccess
 
 open System
 
+[<CLIMutable>]
 type Stream = {
     StreamId : string
     Version : int32
@@ -9,6 +10,7 @@ type Stream = {
     CreatedAt : DateTimeOffset
     UpdatedAt : DateTimeOffset Nullable }
 
+[<CLIMutable>]    
 type Event = {
     EventId : string
     StreamId : string
@@ -17,6 +19,7 @@ type Event = {
     Type : string    
     CreatedAt : DateTimeOffset }
 
+[<CLIMutable>]
 type Snapshot = {
     SnapshotId : string
     StreamId : string

@@ -4,8 +4,8 @@
         "commandName": "Project",
         "environmentVariables": {
           "DOTNET_ENVIRONMENT": "Development",
-          "DB_CONNECTION_STRING": "Server=tcp:localhost,1433;Database=EventStore;User Id=sa;Password=P@55w0rd;"
-          //"DB_CONNECTION_STRING": "Server=tcp:localhost,1433;Database=EventStore_FSharp;Trusted_Connection=true;"
+          //"DB_CONNECTION_STRING": "Server=tcp:localhost,1433;Database=EventStore;User Id=sa;Password=P@55w0rd;"
+          "DB_CONNECTION_STRING": "Server=tcp:localhost,1433;Database=EventStore_FSharp;Trusted_Connection=true;"
         }
       }
     }

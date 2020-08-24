@@ -1,0 +1,14 @@
+###
+GET http://localhost:7071/api/GetAllStreams
+
+###
+GET http://localhost:7071/api/GetStream?streamName=Test1
+
+###
+GET http://localhost:7071/api/GetEvents?streamName=Test&startAtVersion=0
+
+###
+GET http://localhost:7071/api/GetSnapshots?streamName=Test
+
+###
+DELETE  http://localhost:7071/api/DeleteSnapshots?streamName=Test
