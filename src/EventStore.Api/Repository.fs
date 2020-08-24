@@ -9,11 +9,6 @@ open System.Data.SqlClient
 [<RequireQualifiedAccess>]
 module Repository =
 
-    let private toOption (x) =
-        if isNull (box x)
-        then None
-        else Some x
-
     let private storedProcedure = Nullable CommandType.StoredProcedure
 
     let private getDbConnection (DbConnectionString dbConnectionString) =
@@ -22,7 +17,12 @@ module Repository =
         connection :> IDbConnection
 
     let getStream dbConnectionString : GetStream =
-        fun (StreamName streamName) ->                        
+        fun (StreamName streamName) ->   
+            let toOption (x : Stream) =
+                if isNull (box x)
+                then None
+                else Some x
+
             let param = {| StreamName = streamName |}
 
             use connection = getDbConnection dbConnectionString
@@ -85,7 +85,6 @@ module Repository =
 
     let appendEvents dbConnectionString : AppendEvents =
         fun stream events ->
-
             use dt = new DataTable("NewEvents")
 
             dt.Columns.Add("EventId", typedefof<string>) |> ignore

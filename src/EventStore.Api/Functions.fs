@@ -6,6 +6,7 @@ open Microsoft.Extensions.Logging
 open Microsoft.Azure.WebJobs
 open Microsoft.Azure.WebJobs.Extensions.Http
 
+[<RequireQualifiedAccess>]
 module Functions =
 
     [<FunctionName("HelloWorld")>]

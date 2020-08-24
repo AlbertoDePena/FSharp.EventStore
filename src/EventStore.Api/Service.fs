@@ -8,32 +8,33 @@ open FsToolkit.ErrorHandling
 [<RequireQualifiedAccess>]
 module Service =
 
-    let private checkStreamName =
-        Validation.checkStreamName
-        >> Result.mapError DomainError.ValidationError
-        >> Async.singleton
+    let private createUniqueId () =
+        Guid.NewGuid().ToString("D")
 
-    let private checkVersion =
-        Validation.checkVersion
-        >> Result.mapError DomainError.ValidationError
-        >> Async.singleton        
-   
     let getAllStreams (getAllStreams : EventStore.DataAccess.GetAllStreams) = 
         getAllStreams ()
         |> AsyncResult.mapError DomainError.DatabaseError
 
-    let getStream (getStream : EventStore.DataAccess.GetStream) streamName = 
-        checkStreamName streamName
+    let getStream (getStream : EventStore.DataAccess.GetStream) (query : UnvalidatedStreamQuery) =
+        Mapper.toStreamQuery query
+        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
+        |> Result.mapError DomainError.ValidationError
+        |> Async.singleton
         |> AsyncResult.bind (getStream >> AsyncResult.mapError DomainError.DatabaseError)
 
-    let getSnapshots (getSnapshots : EventStore.DataAccess.GetSnapshots) streamName = 
-        checkStreamName streamName
+    let getSnapshots (getSnapshots : EventStore.DataAccess.GetSnapshots) (query : UnvalidatedSnapshotsQuery) =
+        Mapper.toSnapshotsQuery query
+        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
+        |> Result.mapError DomainError.ValidationError
+        |> Async.singleton
         |> AsyncResult.bind (getSnapshots >> AsyncResult.mapError DomainError.DatabaseError)
 
-    let getEvents (getEvents : EventStore.DataAccess.GetEvents) streamName startAtVersion = asyncResult {          
-        let! streamName = checkStreamName streamName
-        let! startAtVersion = checkVersion startAtVersion
-              
+    let getEvents (getEvents : EventStore.DataAccess.GetEvents) (query : UnvalidatedEventsQuery) = asyncResult {                 
+        let! (streamName, startAtVersion) =
+            Mapper.toEventsQuery query
+            |> Result.map (fun q -> String256.value q.StreamName |> StreamName, NonNegativeInt.value q.StartAtVersion |> Version)
+            |> Result.mapError DomainError.ValidationError
+
         let! result = 
             getEvents streamName startAtVersion
             |> AsyncResult.mapError DomainError.DatabaseError
@@ -41,40 +42,9 @@ module Service =
         return result
     }
 
-    let deleteSnapshots (deleteSnapshots : EventStore.DataAccess.DeleteSnapshots) streamName = 
-        checkStreamName streamName
+    let deleteSnapshots (deleteSnapshots : EventStore.DataAccess.DeleteSnapshots) (query : UnvalidatedSnapshotsQuery) =
+        Mapper.toSnapshotsQuery query
+        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
+        |> Result.mapError DomainError.ValidationError
+        |> Async.singleton
         |> AsyncResult.bind (deleteSnapshots >> AsyncResult.mapError DomainError.DatabaseError)
-
-    let createSnapshot 
-        (getStream : EventStore.DataAccess.GetStream) 
-        (createSnapshot : EventStore.DataAccess.CreateSnapshot) 
-        (newSnapshot : EventStore.Domain.CreateSnapshot) = asyncResult {
-           
-        let buildSnapshot (stream : EventStore.DataAccess.Stream) (newSnapshot : EventStore.Domain.CreateSnapshot) = {
-            SnapshotId = Guid.NewGuid().ToString("D")
-            StreamId = stream.StreamId
-            Version = stream.Version
-            Data = newSnapshot.Data
-            Description = newSnapshot.Description
-            CreatedAt =  DateTimeOffset.UtcNow
-        }
-        
-        let! streamOption =
-            getStream (StreamName newSnapshot.StreamName)
-            |> AsyncResult.mapError DomainError.DatabaseError
-
-        let! result =
-            match streamOption with
-            | None -> 
-                newSnapshot.StreamName
-                |> DomainError.StreamNotFound 
-                |> AsyncResult.returnError
-            | Some stream ->
-                Validation.validateSnapshot newSnapshot
-                |> Result.map (buildSnapshot stream)
-                |> Result.mapError DomainError.ValidationError
-                |> Async.singleton
-                |> AsyncResult.bind (createSnapshot >> AsyncResult.mapError DomainError.DatabaseError)
-
-        return result
-    }
