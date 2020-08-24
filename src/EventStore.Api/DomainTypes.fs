@@ -1,7 +1,6 @@
 namespace EventStore.Domain
 
 open System
-open EventStore.Extensions
 open EventStore.DataAccess
 open FsToolkit.ErrorHandling
 

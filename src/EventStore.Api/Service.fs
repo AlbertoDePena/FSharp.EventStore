@@ -50,7 +50,7 @@ module Service =
         (createSnapshot : EventStore.DataAccess.CreateSnapshot) 
         (newSnapshot : EventStore.Domain.CreateSnapshot) = asyncResult {
            
-        let buildSnapshot (stream : EventStore.DataAccess.Stream) = {
+        let buildSnapshot (stream : EventStore.DataAccess.Stream) (newSnapshot : EventStore.Domain.CreateSnapshot) = {
             SnapshotId = Guid.NewGuid().ToString("D")
             StreamId = stream.StreamId
             Version = stream.Version
@@ -63,17 +63,18 @@ module Service =
             getStream (StreamName newSnapshot.StreamName)
             |> AsyncResult.mapError DomainError.DatabaseError
 
-        let result =
+        let! result =
             match streamOption with
             | None -> 
                 newSnapshot.StreamName
                 |> DomainError.StreamNotFound 
                 |> AsyncResult.returnError
             | Some stream ->
-                stream
-                |> buildSnapshot 
-                |> createSnapshot 
-                |> AsyncResult.mapError DomainError.DatabaseError
+                Validation.validateSnapshot newSnapshot
+                |> Result.map (buildSnapshot stream)
+                |> Result.mapError DomainError.ValidationError
+                |> Async.singleton
+                |> AsyncResult.bind (createSnapshot >> AsyncResult.mapError DomainError.DatabaseError)
 
         return result
     }
