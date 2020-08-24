@@ -11,6 +11,24 @@ open EventStore.Domain
 open EventStore.Extensions
 open Newtonsoft.Json
 open FsToolkit.ErrorHandling
+open System.IO
+
+[<CLIMutable>]
+type NewEventDto = {
+    Data : string
+    Type : string }
+
+[<CLIMutable>]    
+type AppendEventsDto = {
+    ExpectedVersion : int32
+    StreamName : string
+    Events : NewEventDto list }
+
+[<CLIMutable>]
+type CreateSnapshotDto = {
+    StreamName : string
+    Description : string
+    Data : string }
 
 [<RequireQualifiedAccess>]
 module CompositionRoot =
@@ -20,22 +38,30 @@ module CompositionRoot =
         |> DbConnectionString
 
     let getAllStreams () =
-        dbConnectionString
-        |> Repository.getAllStreams
-        |> Service.getAllStreams
+        let getAllStreams = Repository.getAllStreams dbConnectionString
+        Service.getAllStreams getAllStreams
 
     let getStream (query : UnvalidatedStreamQuery) =
-        Service.getStream (Repository.getStream dbConnectionString) query
+        let getStream = Repository.getStream dbConnectionString
+        Service.getStream getStream query
 
     let getEvents (query : UnvalidatedEventsQuery) =
-        Service.getEvents (Repository.getEvents dbConnectionString) query  
+        let getEvents = Repository.getEvents dbConnectionString
+        Service.getEvents getEvents query  
         
     let getSnapshots (query : UnvalidatedSnapshotsQuery) =
-        Service.getSnapshots (Repository.getSnapshots dbConnectionString) query  
+        let getSnapshots = Repository.getSnapshots dbConnectionString
+        Service.getSnapshots getSnapshots query  
         
     let deleteSnapshots (query : UnvalidatedSnapshotsQuery) =
-        Service.deleteSnapshots (Repository.deleteSnapshots dbConnectionString) query  
+        let deleteSnapshots = Repository.deleteSnapshots dbConnectionString
+        Service.deleteSnapshots deleteSnapshots query  
 
+    let createSnapshot (model : UnvalidatedCreateSnapshot) =
+        let getStream = Repository.getStream dbConnectionString
+        let createSnapshot = Repository.createSnapshot dbConnectionString
+        Service.createSnapshot getStream createSnapshot model       
+        
 [<RequireQualifiedAccess>]
 module Functions =
 
@@ -109,4 +135,23 @@ module Functions =
 
         CompositionRoot.deleteSnapshots query
         |> (toActionResult logger)
-        |> Async.StartAsTask        
+        |> Async.StartAsTask   
+        
+    [<FunctionName("CreateSnapshot")>]
+    let CreateSnapshot 
+        ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
+        (logger: ILogger) =
+        
+        let toModel (dto : CreateSnapshotDto) : UnvalidatedCreateSnapshot = { 
+            Data = dto.Data
+            Description = dto.Description
+            StreamName = dto.StreamName }
+
+        use reader = new StreamReader(request.Body)
+
+        reader.ReadToEndAsync() 
+        |> Async.AwaitTask
+        |> Async.map (JsonConvert.DeserializeObject<CreateSnapshotDto> >> toModel)
+        |> Async.bind CompositionRoot.createSnapshot
+        |> (toActionResult logger)
+        |> Async.StartAsTask 

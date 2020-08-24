@@ -12,3 +12,13 @@ GET http://localhost:7071/api/GetSnapshots?streamName=Test
 
 ###
 DELETE  http://localhost:7071/api/DeleteSnapshots?streamName=Test
+
+###
+POST http://localhost:7071/api/CreateSnapshot
+Content-Type: application/json
+
+{
+    "data": "adsasda",
+    "description": "This is a test",
+    "streamName": "Test"
+}
