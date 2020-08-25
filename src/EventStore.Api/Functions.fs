@@ -13,49 +13,6 @@ open Newtonsoft.Json
 open FsToolkit.ErrorHandling
 open System.IO
 
-[<CLIMutable>]
-type StreamDto = {
-    StreamId : string
-    Version : int32
-    Name : string
-    CreatedAt : DateTimeOffset
-    UpdatedAt : DateTimeOffset Nullable }
-
-[<CLIMutable>]    
-type EventDto = {
-    EventId : string
-    StreamId : string
-    Version : int32
-    Data : string
-    Type : string    
-    CreatedAt : DateTimeOffset }
-
-[<CLIMutable>]
-type SnapshotDto = {
-    SnapshotId : string
-    StreamId : string
-    Version : int32
-    Data : string
-    Description : string    
-    CreatedAt : DateTimeOffset }
-
-[<CLIMutable>]
-type NewEventDto = {
-    Data : string
-    Type : string }
-
-[<CLIMutable>]    
-type AppendEventsDto = {
-    ExpectedVersion : int32
-    StreamName : string
-    Events : NewEventDto array }
-
-[<CLIMutable>]
-type CreateSnapshotDto = {
-    StreamName : string
-    Description : string
-    Data : string }
-
 [<RequireQualifiedAccess>]
 module Functions =
 
@@ -89,6 +46,7 @@ module Functions =
         dbConnectionString
         |> Repository.getAllStreams 
         |> Service.getAllStreams
+        |> AsyncResult.map (List.map StreamDto.fromModel)
         |> (toActionResult logger)
         |> Async.StartAsTask
         
@@ -107,6 +65,7 @@ module Functions =
                 |> Option.defaultValue String.Empty } 
 
         getStream query
+        |> AsyncResult.map StreamDto.fromModel
         |> (toActionResult logger)
         |> Async.StartAsTask 
         
@@ -125,6 +84,7 @@ module Functions =
                 |> Option.defaultValue String.Empty } 
 
         getSnapshots query
+        |> AsyncResult.map (List.map SnapshotDto.fromModel)
         |> (toActionResult logger)
         |> Async.StartAsTask     
         
@@ -147,6 +107,7 @@ module Functions =
                 |> Option.defaultValue 0 } 
 
         getEvents query
+        |> AsyncResult.map (List.map EventDto.fromModel)
         |> (toActionResult logger)
         |> Async.StartAsTask              
 

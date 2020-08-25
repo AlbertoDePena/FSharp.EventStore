@@ -217,3 +217,29 @@ module Mapper =
 
         return { StreamName = streamName; StartAtVersion = version }
     }
+
+    let toStream (entity : EventStore.DataAccess.Stream) : Stream = {
+        StreamId = String50 entity.StreamId
+        Name = String256 entity.Name
+        Version = NonNegativeInt entity.Version
+        CreatedAt = Timestamp entity.CreatedAt
+        UpdatedAt = entity.UpdatedAt |> Option.ofNullable |> Option.map Timestamp
+    }
+
+    let toEvent (entity : EventStore.DataAccess.Event) : Event = {
+        EventId = String50 entity.EventId
+        StreamId = String50 entity.StreamId
+        Type = String256 entity.Type
+        Data = StringMax entity.Data
+        Version = NonNegativeInt entity.Version
+        CreatedAt = Timestamp entity.CreatedAt
+    }
+
+    let toSnapshot (entity : EventStore.DataAccess.Snapshot) : Snapshot = {
+        SnapshotId = String50 entity.SnapshotId
+        StreamId = String50 entity.StreamId
+        Description = String256 entity.Description
+        Data = StringMax entity.Data
+        Version = NonNegativeInt entity.Version
+        CreatedAt = Timestamp entity.CreatedAt
+    }
