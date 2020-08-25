@@ -86,12 +86,9 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getAllStreams () =
-            dbConnectionString
-            |> Repository.getAllStreams 
-            |> Service.getAllStreams
-
-        getAllStreams ()
+        dbConnectionString
+        |> Repository.getAllStreams 
+        |> Service.getAllStreams
         |> (toActionResult logger)
         |> Async.StartAsTask
         
@@ -104,8 +101,10 @@ module Functions =
             let getStream = Repository.getStream dbConnectionString
             Service.getStream getStream query
             
-        let streamName = request.TryGetQueryStringValue "streamName" |> Option.defaultValue String.Empty
-        let query : UnvalidatedStreamQuery = { StreamName = streamName } 
+        let query : UnvalidatedStreamQuery = { 
+            StreamName = 
+                request.TryGetQueryStringValue "streamName" 
+                |> Option.defaultValue String.Empty } 
 
         getStream query
         |> (toActionResult logger)
@@ -120,8 +119,10 @@ module Functions =
             let getSnapshots = Repository.getSnapshots dbConnectionString
             Service.getSnapshots getSnapshots query  
 
-        let streamName = request.TryGetQueryStringValue "streamName" |> Option.defaultValue String.Empty
-        let query : UnvalidatedSnapshotsQuery = { StreamName = streamName } 
+        let query : UnvalidatedSnapshotsQuery = { 
+            StreamName = 
+                request.TryGetQueryStringValue "streamName" 
+                |> Option.defaultValue String.Empty } 
 
         getSnapshots query
         |> (toActionResult logger)
@@ -136,9 +137,14 @@ module Functions =
             let getEvents = Repository.getEvents dbConnectionString
             Service.getEvents getEvents query
 
-        let streamName = request.TryGetQueryStringValue "streamName" |> Option.defaultValue String.Empty
-        let startAtVersion = request.TryGetQueryStringValue "startAtVersion" |> Option.map int32 |> Option.defaultValue 0
-        let query : UnvalidatedEventsQuery = { StreamName = streamName; StartAtVersion = startAtVersion } 
+        let query : UnvalidatedEventsQuery = { 
+            StreamName = 
+                request.TryGetQueryStringValue "streamName" 
+                |> Option.defaultValue String.Empty
+            StartAtVersion = 
+                request.TryGetQueryStringValue "startAtVersion" 
+                |> Option.map int32 
+                |> Option.defaultValue 0 } 
 
         getEvents query
         |> (toActionResult logger)
@@ -153,8 +159,10 @@ module Functions =
             let deleteSnapshots = Repository.deleteSnapshots dbConnectionString
             Service.deleteSnapshots deleteSnapshots query 
 
-        let streamName = request.TryGetQueryStringValue "streamName" |> Option.defaultValue String.Empty
-        let query : UnvalidatedSnapshotsQuery = { StreamName = streamName } 
+        let query : UnvalidatedSnapshotsQuery = { 
+            StreamName = 
+                request.TryGetQueryStringValue "streamName" 
+                |> Option.defaultValue String.Empty } 
 
         deleteSnapshots query
         |> (toActionResult logger)
