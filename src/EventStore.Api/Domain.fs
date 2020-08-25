@@ -19,23 +19,23 @@ module Service =
             >> AsyncResult.bind (Async.singleton >> AsyncResult.requireSome DomainError.StreamNotFound)
 
         Mapper.toStreamQuery query
-        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
         |> Result.mapError DomainError.ValidationError
+        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)        
         |> Async.singleton
         |> AsyncResult.bind getStream
 
     let getSnapshots (getSnapshots : Repository.GetSnapshots) (query : UnvalidatedSnapshotsQuery) =
         Mapper.toSnapshotsQuery query
-        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
         |> Result.mapError DomainError.ValidationError
+        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)        
         |> Async.singleton
         |> AsyncResult.bind (getSnapshots >> AsyncResult.mapError DomainError.DatabaseError)
 
     let getEvents (getEvents : Repository.GetEvents) (query : UnvalidatedEventsQuery) = asyncResult {                 
         let! (streamName, startAtVersion) =
             Mapper.toEventsQuery query
-            |> Result.map (fun q -> String256.value q.StreamName |> StreamName, NonNegativeInt.value q.StartAtVersion |> Version)
             |> Result.mapError DomainError.ValidationError
+            |> Result.map (fun q -> String256.value q.StreamName |> StreamName, NonNegativeInt.value q.StartAtVersion |> Version)
 
         let! result = 
             getEvents streamName startAtVersion
@@ -46,8 +46,8 @@ module Service =
 
     let deleteSnapshots (deleteSnapshots : Repository.DeleteSnapshots) (query : UnvalidatedSnapshotsQuery) =
         Mapper.toSnapshotsQuery query
-        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
         |> Result.mapError DomainError.ValidationError
+        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)        
         |> Async.singleton
         |> AsyncResult.bind (deleteSnapshots >> AsyncResult.mapError DomainError.DatabaseError)
 

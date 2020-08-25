@@ -3,6 +3,18 @@ namespace EventStore.Domain
 open System
 open FsToolkit.ErrorHandling
 
+type StringMax = private StringMax of string
+
+[<RequireQualifiedAccess>]
+module StringMax =
+
+    let value (StringMax x) = x
+
+    let create value =
+        if String.IsNullOrWhiteSpace(value)
+        then None
+        else Some (StringMax value) 
+
 type String50 = private String50 of string
 
 [<RequireQualifiedAccess>]
@@ -43,18 +55,6 @@ module NonNegativeInt =
         then None
         else Some (NonNegativeInt value)
 
-type StringMax = private StringMax of string
-
-[<RequireQualifiedAccess>]
-module StringMax =
-
-    let value (StringMax x) = x
-
-    let create value =
-        if String.IsNullOrWhiteSpace(value)
-        then None
-        else Some (StringMax value) 
-
 type Timestamp = private Timestamp of DateTimeOffset
 
 [<RequireQualifiedAccess>]
@@ -63,9 +63,7 @@ module Timestamp =
     let value (Timestamp x) = x
 
     let create (value : DateTimeOffset) =
-        if value = DateTimeOffset.MinValue
-        then None
-        else if value = DateTimeOffset.MaxValue
+        if value = DateTimeOffset.MinValue || value = DateTimeOffset.MaxValue
         then None
         else Some (Timestamp value)
 
@@ -181,7 +179,7 @@ module Mapper =
         
         let! version =
             NonNegativeInt.create appendEvents.ExpectedVersion
-            |> Result.requireSome "Stream version is not valid"
+            |> Result.requireSome "Invalid stream version"
 
         do! appendEvents.Events |> Result.requireNotEmpty "Cannot append to stream without events" 
 
@@ -215,7 +213,7 @@ module Mapper =
 
         let! version =
             NonNegativeInt.create query.StartAtVersion
-            |> Result.requireSome "Stream version is not valid"
+            |> Result.requireSome "Invalid stream version"
 
         return { StreamName = streamName; StartAtVersion = version }
     }

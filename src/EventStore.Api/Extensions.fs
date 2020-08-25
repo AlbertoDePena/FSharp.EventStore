@@ -18,7 +18,6 @@ module HttpRequestExtensions =
 
     type HttpRequest with
 
-        /// Try to get the Bearer token from the Authorization header
         member this.TryGetBearerToken () =
             this.Headers 
             |> Seq.tryFind (fun q -> q.Key = "Authorization")
