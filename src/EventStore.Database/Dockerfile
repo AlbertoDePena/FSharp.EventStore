@@ -19,8 +19,6 @@ WORKDIR /Database
 COPY --from=build ./stage/output/ ./
 
 ENV DOTNET_ENVIRONMENT=Production \
-    DOTNET_RUNNING_IN_CONTAINER=true \
-    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 \
     DB_CONNECTION_STRING=""
     
 RUN chmod +x ./EventStore.Database
