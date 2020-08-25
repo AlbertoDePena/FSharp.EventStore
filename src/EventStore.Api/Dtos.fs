@@ -70,14 +70,55 @@ type NewEventDto = {
     Data : string
     Type : string }
 
+[<RequireQualifiedAccess>]
+module NewEventDto =
+
+    let toModel (dto : NewEventDto) : UnvalidatedNewEvent = {
+        Type = dto.Type
+        Data = dto.Data }
+
 [<CLIMutable>]    
 type AppendEventsDto = {
     ExpectedVersion : int32
     StreamName : string
     Events : NewEventDto array }
 
+[<RequireQualifiedAccess>]    
+module AppendEventsDto =
+
+    let toModel (dto : AppendEventsDto) : UnvalidatedAppendEvents = { 
+        Events = dto.Events |> Array.map NewEventDto.toModel |> Array.toList
+        ExpectedVersion = dto.ExpectedVersion
+        StreamName = dto.StreamName }
+
 [<CLIMutable>]
 type CreateSnapshotDto = {
     StreamName : string
     Description : string
     Data : string }
+
+[<RequireQualifiedAccess>]    
+module CreateSnapshotDto =
+
+    let toModel (dto : CreateSnapshotDto) : UnvalidatedCreateSnapshot = { 
+        Data = dto.Data
+        Description = dto.Description
+        StreamName = dto.StreamName }
+
+[<RequireQualifiedAccess>]
+module StreamQueryDto =
+    
+    let toModel (streamName : string) : UnvalidatedStreamQuery = { StreamName = streamName }
+
+[<RequireQualifiedAccess>]
+module SnapshotsQueryDto =
+    
+    let toModel (streamName : string) : UnvalidatedSnapshotsQuery = { StreamName = streamName }
+
+[<RequireQualifiedAccess>]
+module EventsQueryDto =
+    
+    let toModel (streamName : string) (startAtVersion : int32) : UnvalidatedEventsQuery = {
+        StreamName = streamName
+        StartAtVersion = startAtVersion
+    }

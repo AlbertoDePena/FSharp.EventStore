@@ -59,10 +59,10 @@ module Functions =
             let getStream = Repository.getStream dbConnectionString
             Service.getStream getStream query
             
-        let query : UnvalidatedStreamQuery = { 
-            StreamName = 
-                request.TryGetQueryStringValue "streamName" 
-                |> Option.defaultValue String.Empty } 
+        let query = 
+            request.TryGetQueryStringValue "streamName" 
+            |> Option.defaultValue String.Empty
+            |> StreamQueryDto.toModel
 
         getStream query
         |> AsyncResult.map StreamDto.fromModel
@@ -78,10 +78,10 @@ module Functions =
             let getSnapshots = Repository.getSnapshots dbConnectionString
             Service.getSnapshots getSnapshots query  
 
-        let query : UnvalidatedSnapshotsQuery = { 
-            StreamName = 
-                request.TryGetQueryStringValue "streamName" 
-                |> Option.defaultValue String.Empty } 
+        let query =
+            request.TryGetQueryStringValue "streamName" 
+            |> Option.defaultValue String.Empty
+            |> SnapshotsQueryDto.toModel
 
         getSnapshots query
         |> AsyncResult.map (List.map SnapshotDto.fromModel)
@@ -97,14 +97,17 @@ module Functions =
             let getEvents = Repository.getEvents dbConnectionString
             Service.getEvents getEvents query
 
-        let query : UnvalidatedEventsQuery = { 
-            StreamName = 
-                request.TryGetQueryStringValue "streamName" 
-                |> Option.defaultValue String.Empty
-            StartAtVersion = 
-                request.TryGetQueryStringValue "startAtVersion" 
-                |> Option.map int32 
-                |> Option.defaultValue 0 } 
+        let streamName =
+            request.TryGetQueryStringValue "streamName" 
+            |> Option.defaultValue String.Empty
+
+        let startAtVersion =
+            request.TryGetQueryStringValue "startAtVersion" 
+            |> Option.map int32 
+            |> Option.defaultValue 0
+
+        let query =
+            EventsQueryDto.toModel streamName startAtVersion
 
         getEvents query
         |> AsyncResult.map (List.map EventDto.fromModel)
@@ -120,10 +123,10 @@ module Functions =
             let deleteSnapshots = Repository.deleteSnapshots dbConnectionString
             Service.deleteSnapshots deleteSnapshots query 
 
-        let query : UnvalidatedSnapshotsQuery = { 
-            StreamName = 
-                request.TryGetQueryStringValue "streamName" 
-                |> Option.defaultValue String.Empty } 
+        let query =
+            request.TryGetQueryStringValue "streamName" 
+            |> Option.defaultValue String.Empty
+            |> SnapshotsQueryDto.toModel
 
         deleteSnapshots query
         |> (toActionResult logger)
@@ -139,16 +142,11 @@ module Functions =
             let createSnapshot = Repository.createSnapshot dbConnectionString
             Service.createSnapshot getStream createSnapshot model  
 
-        let toModel (dto : CreateSnapshotDto) : UnvalidatedCreateSnapshot = { 
-            Data = dto.Data
-            Description = dto.Description
-            StreamName = dto.StreamName }
-
         use reader = new StreamReader(request.Body)
 
         reader.ReadToEndAsync() 
         |> Async.AwaitTask
-        |> Async.map (JsonConvert.DeserializeObject<CreateSnapshotDto> >> toModel)
+        |> Async.map (JsonConvert.DeserializeObject<CreateSnapshotDto> >> CreateSnapshotDto.toModel)
         |> Async.bind createSnapshot
         |> (toActionResult logger)
         |> Async.StartAsTask 
@@ -163,20 +161,11 @@ module Functions =
             let appendEvents = Repository.appendEvents dbConnectionString
             Service.appendEvents getStream appendEvents model  
 
-        let toEventModel (dto : NewEventDto) : UnvalidatedNewEvent = {
-            Type = dto.Type
-            Data = dto.Data }
-
-        let toModel (dto : AppendEventsDto) : UnvalidatedAppendEvents = { 
-            Events = dto.Events |> Array.map toEventModel |> Array.toList
-            ExpectedVersion = dto.ExpectedVersion
-            StreamName = dto.StreamName }
-
         use reader = new StreamReader(request.Body)
 
         reader.ReadToEndAsync() 
         |> Async.AwaitTask
-        |> Async.map (JsonConvert.DeserializeObject<AppendEventsDto> >> toModel)
+        |> Async.map (JsonConvert.DeserializeObject<AppendEventsDto> >> AppendEventsDto.toModel)
         |> Async.bind appendEvents
         |> (toActionResult logger)
         |> Async.StartAsTask 
