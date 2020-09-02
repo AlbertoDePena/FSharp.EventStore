@@ -55,47 +55,12 @@ module NonNegativeInt =
         then None
         else Some (NonNegativeInt value)
 
-type Timestamp = private Timestamp of DateTimeOffset
-
-[<RequireQualifiedAccess>]
-module Timestamp =
-
-    let value (Timestamp x) = x
-
-    let create (value : DateTimeOffset) =
-        if value = DateTimeOffset.MinValue || value = DateTimeOffset.MaxValue
-        then None
-        else Some (Timestamp value)
-
 [<RequireQualifiedAccess>]
 type DomainError =
     | ValidationError of errorMessage : string           
     | StreamNotFound
     | InvalidVersion
     | DatabaseError of ex : Exception
-
-type Stream = {
-    StreamId : String50
-    Version : NonNegativeInt
-    Name : String256
-    CreatedAt : Timestamp
-    UpdatedAt : Timestamp option }
-
-type Event = {
-    EventId : String50
-    StreamId : String50
-    Version : NonNegativeInt
-    Data : StringMax
-    Type : String256    
-    CreatedAt : Timestamp }
-
-type Snapshot = {
-    SnapshotId : String50
-    StreamId : String50
-    Version : NonNegativeInt
-    Data : StringMax
-    Description : String256    
-    CreatedAt : Timestamp } 
 
 type NewEvent = {
     Data : StringMax
@@ -216,30 +181,4 @@ module Mapper =
             |> Result.requireSome "Invalid stream version"
 
         return { StreamName = streamName; StartAtVersion = version }
-    }
-
-    let toStream (entity : EventStore.DataAccess.Stream) : Stream = {
-        StreamId = String50 entity.StreamId
-        Name = String256 entity.Name
-        Version = NonNegativeInt entity.Version
-        CreatedAt = Timestamp entity.CreatedAt
-        UpdatedAt = entity.UpdatedAt |> Option.ofNullable |> Option.map Timestamp
-    }
-
-    let toEvent (entity : EventStore.DataAccess.Event) : Event = {
-        EventId = String50 entity.EventId
-        StreamId = String50 entity.StreamId
-        Type = String256 entity.Type
-        Data = StringMax entity.Data
-        Version = NonNegativeInt entity.Version
-        CreatedAt = Timestamp entity.CreatedAt
-    }
-
-    let toSnapshot (entity : EventStore.DataAccess.Snapshot) : Snapshot = {
-        SnapshotId = String50 entity.SnapshotId
-        StreamId = String50 entity.StreamId
-        Description = String256 entity.Description
-        Data = StringMax entity.Data
-        Version = NonNegativeInt entity.Version
-        CreatedAt = Timestamp entity.CreatedAt
     }

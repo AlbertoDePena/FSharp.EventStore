@@ -11,7 +11,6 @@ module Service =
     let getAllStreams (getAllStreams : Repository.GetAllStreams) = 
         getAllStreams ()
         |> AsyncResult.mapError DomainError.DatabaseError
-        |> AsyncResult.map (List.map Mapper.toStream)
 
     let getStream (getStream : Repository.GetStream) (query : UnvalidatedStreamQuery) =
         let getStream =
@@ -24,7 +23,6 @@ module Service =
         |> Result.map (fun q -> String256.value q.StreamName |> StreamName)        
         |> Async.singleton
         |> AsyncResult.bind getStream
-        |> AsyncResult.map Mapper.toStream
 
     let getSnapshots (getSnapshots : Repository.GetSnapshots) (query : UnvalidatedSnapshotsQuery) =
         Mapper.toSnapshotsQuery query
@@ -32,7 +30,6 @@ module Service =
         |> Result.map (fun q -> String256.value q.StreamName |> StreamName)        
         |> Async.singleton
         |> AsyncResult.bind (getSnapshots >> AsyncResult.mapError DomainError.DatabaseError)
-        |> AsyncResult.map (List.map Mapper.toSnapshot)
 
     let getEvents (getEvents : Repository.GetEvents) (query : UnvalidatedEventsQuery) = asyncResult {                 
         let! (streamName, startAtVersion) =
@@ -43,7 +40,6 @@ module Service =
         let! result = 
             getEvents streamName startAtVersion
             |> AsyncResult.mapError DomainError.DatabaseError
-            |> AsyncResult.map (List.map Mapper.toEvent)
 
         return result
     }

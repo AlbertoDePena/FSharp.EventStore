@@ -1,8 +1,8 @@
 namespace EventStore.Api
 
 open System
+open EventStore.DataAccess
 open EventStore.Domain
-open FsToolkit.ErrorHandling
 
 [<CLIMutable>]
 type StreamDto = {
@@ -15,12 +15,12 @@ type StreamDto = {
 [<RequireQualifiedAccess>]
 module StreamDto =
     
-    let fromModel (stream : EventStore.Domain.Stream) : StreamDto = {
-        StreamId = String50.value stream.StreamId
-        Name = String256.value stream.Name
-        Version = NonNegativeInt.value stream.Version
-        CreatedAt = Timestamp.value stream.CreatedAt
-        UpdatedAt = stream.UpdatedAt |> Option.map Timestamp.value |> Option.toNullable
+    let fromModel (stream : Stream) : StreamDto = {
+        StreamId = stream.StreamId
+        Name = stream.Name
+        Version = stream.Version
+        CreatedAt = stream.CreatedAt
+        UpdatedAt = stream.UpdatedAt
     }
 
 [<CLIMutable>]    
@@ -35,13 +35,13 @@ type EventDto = {
 [<RequireQualifiedAccess>]
 module EventDto =
 
-    let fromModel (event : EventStore.Domain.Event) : EventDto = {
-        EventId = String50.value event.EventId
-        StreamId = String50.value event.StreamId
-        Version = NonNegativeInt.value event.Version
-        Type = String256.value event.Type
-        Data = StringMax.value event.Data
-        CreatedAt = Timestamp.value event.CreatedAt
+    let fromModel (event : Event) : EventDto = {
+        EventId = event.EventId
+        StreamId = event.StreamId
+        Version = event.Version
+        Type = event.Type
+        Data = event.Data
+        CreatedAt = event.CreatedAt
     }
 
 [<CLIMutable>]
@@ -56,13 +56,13 @@ type SnapshotDto = {
 [<RequireQualifiedAccess>]
 module SnapshotDto =
 
-    let fromModel (snapshot : EventStore.Domain.Snapshot) : SnapshotDto = {
-        SnapshotId = String50.value snapshot.SnapshotId
-        StreamId = String50.value snapshot.StreamId
-        Version = NonNegativeInt.value snapshot.Version
-        Description = String256.value snapshot.Description
-        Data = StringMax.value snapshot.Data
-        CreatedAt = Timestamp.value snapshot.CreatedAt
+    let fromModel (snapshot : Snapshot) : SnapshotDto = {
+        SnapshotId = snapshot.SnapshotId
+        StreamId = snapshot.StreamId
+        Version = snapshot.Version
+        Description = snapshot.Description
+        Data = snapshot.Data
+        CreatedAt = snapshot.CreatedAt
     }
 
 [<CLIMutable>]
