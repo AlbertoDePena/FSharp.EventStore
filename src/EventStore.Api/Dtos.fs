@@ -3,6 +3,7 @@ namespace EventStore.Api
 open System
 open EventStore.DataAccess
 open EventStore.Domain
+open FsToolkit.ErrorHandling
 
 [<CLIMutable>]
 type StreamDto = {
@@ -73,9 +74,17 @@ type NewEventDto = {
 [<RequireQualifiedAccess>]
 module NewEventDto =
 
-    let toModel (dto : NewEventDto) : UnvalidatedNewEvent = {
-        Type = dto.Type
-        Data = dto.Data }
+    let toModel (dto : NewEventDto) : Result<NewEvent, string> = result {
+        let! eventType =
+            String256.tryCreate dto.Type
+            |> Result.requireSome "Event type is required and it must be at most 256 characters"
+        
+        let! data = 
+            StringMax.tryCreate dto.Data
+            |> Result.requireSome "Event data is required"
+
+        return { Type = eventType; Data = data }
+    }
 
 [<CLIMutable>]    
 type AppendEventsDto = {
@@ -86,10 +95,24 @@ type AppendEventsDto = {
 [<RequireQualifiedAccess>]    
 module AppendEventsDto =
 
-    let toModel (dto : AppendEventsDto) : UnvalidatedAppendEvents = { 
-        Events = dto.Events |> Array.map NewEventDto.toModel |> Array.toList
-        ExpectedVersion = dto.ExpectedVersion
-        StreamName = dto.StreamName }
+    let toModel (dto : AppendEventsDto) : Result<AppendEvents, string> = result {        
+        let! streamName = 
+            String256.tryCreate dto.StreamName
+            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
+        
+        let! version =
+            NonNegativeInt.tryCreate dto.ExpectedVersion
+            |> Result.requireSome "Invalid stream version"
+
+        do! dto.Events |> Result.requireNotEmpty "Cannot append to stream without events" 
+
+        let! events = 
+            dto.Events 
+            |> Array.toList
+            |> List.traverseResultM NewEventDto.toModel
+            
+        return { StreamName = streamName; Events = events; ExpectedVersion = version }
+    }
 
 [<CLIMutable>]
 type CreateSnapshotDto = {
@@ -100,25 +123,49 @@ type CreateSnapshotDto = {
 [<RequireQualifiedAccess>]    
 module CreateSnapshotDto =
 
-    let toModel (dto : CreateSnapshotDto) : UnvalidatedCreateSnapshot = { 
-        Data = dto.Data
-        Description = dto.Description
-        StreamName = dto.StreamName }
+    let toModel (dto : CreateSnapshotDto) : Result<CreateSnapshot, string> = result {
+        let! streamName = 
+            String256.tryCreate dto.StreamName
+            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
+
+        let! description =
+            String256.tryCreate dto.Description
+            |> Result.requireSome "Snapshot description is required and it must be at most 256 characters"
+        
+        let! data = 
+            StringMax.tryCreate dto.Data
+            |> Result.requireSome "Snapshot data is required"
+
+        return { StreamName = streamName; Description = description; Data = data }
+    }
 
 [<RequireQualifiedAccess>]
-module StreamQueryDto =
+module Query =
     
-    let toModel (streamName : string) : UnvalidatedStreamQuery = { StreamName = streamName }
+    let toStreamQueryModel (streamName : string) : Result<StreamQuery, string> = result {
+        let! streamName = 
+            String256.tryCreate streamName
+            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
 
-[<RequireQualifiedAccess>]
-module SnapshotsQueryDto =
-    
-    let toModel (streamName : string) : UnvalidatedSnapshotsQuery = { StreamName = streamName }
+        return { StreamName = streamName }
+    }
 
-[<RequireQualifiedAccess>]
-module EventsQueryDto =
-    
-    let toModel (streamName : string) (startAtVersion : int32) : UnvalidatedEventsQuery = {
-        StreamName = streamName
-        StartAtVersion = startAtVersion
+    let toSnapshotsQueryModel (streamName : string) : Result<SnapshotsQuery, string> = result {
+        let! streamName = 
+            String256.tryCreate streamName
+            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
+
+        return { StreamName = streamName }
+    }
+
+    let toEventsQueryModel (streamName : string) (startAtVersion : int32) : Result<EventsQuery, string> = result {
+        let! streamName = 
+            String256.tryCreate streamName
+            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
+
+        let! version =
+            NonNegativeInt.tryCreate startAtVersion
+            |> Result.requireSome "Invalid stream version"
+
+        return { StreamName = streamName; StartAtVersion = version }
     }

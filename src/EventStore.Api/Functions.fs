@@ -55,16 +55,19 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getStream (query : UnvalidatedStreamQuery) =
+        let getStream (query : StreamQuery) =
             let getStream = Repository.getStream dbConnectionString
             Service.getStream getStream query
             
         let query = 
             request.TryGetQueryStringValue "streamName" 
             |> Option.defaultValue String.Empty
-            |> StreamQueryDto.toModel
+            |> Query.toStreamQueryModel
+            |> Result.mapError DomainError.ValidationError
+            |> Async.singleton
 
-        getStream query
+        query
+        |> AsyncResult.bind getStream
         |> AsyncResult.map StreamDto.fromModel
         |> (toActionResult logger)
         |> Async.StartAsTask 
@@ -74,16 +77,19 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getSnapshots (query : UnvalidatedSnapshotsQuery) =
+        let getSnapshots (query : SnapshotsQuery) =
             let getSnapshots = Repository.getSnapshots dbConnectionString
             Service.getSnapshots getSnapshots query  
 
         let query =
             request.TryGetQueryStringValue "streamName" 
             |> Option.defaultValue String.Empty
-            |> SnapshotsQueryDto.toModel
-
-        getSnapshots query
+            |> Query.toSnapshotsQueryModel
+            |> Result.mapError DomainError.ValidationError
+            |> Async.singleton
+        
+        query
+        |> AsyncResult.bind getSnapshots
         |> AsyncResult.map (List.map SnapshotDto.fromModel)
         |> (toActionResult logger)
         |> Async.StartAsTask     
@@ -93,7 +99,7 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getEvents (query : UnvalidatedEventsQuery) =
+        let getEvents (query : EventsQuery) =
             let getEvents = Repository.getEvents dbConnectionString
             Service.getEvents getEvents query
 
@@ -107,9 +113,12 @@ module Functions =
             |> Option.defaultValue 0
 
         let query =
-            EventsQueryDto.toModel streamName startAtVersion
+            Query.toEventsQueryModel streamName startAtVersion
+            |> Result.mapError DomainError.ValidationError
+            |> Async.singleton
 
-        getEvents query
+        query
+        |> AsyncResult.bind getEvents
         |> AsyncResult.map (List.map EventDto.fromModel)
         |> (toActionResult logger)
         |> Async.StartAsTask              
@@ -119,16 +128,19 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "delete", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let deleteSnapshots (query : UnvalidatedSnapshotsQuery) =
+        let deleteSnapshots (query : SnapshotsQuery) =
             let deleteSnapshots = Repository.deleteSnapshots dbConnectionString
             Service.deleteSnapshots deleteSnapshots query 
 
         let query =
             request.TryGetQueryStringValue "streamName" 
             |> Option.defaultValue String.Empty
-            |> SnapshotsQueryDto.toModel
+            |> Query.toSnapshotsQueryModel
+            |> Result.mapError DomainError.ValidationError
+            |> Async.singleton
 
-        deleteSnapshots query
+        query
+        |> AsyncResult.bind deleteSnapshots
         |> (toActionResult logger)
         |> Async.StartAsTask   
         
@@ -137,7 +149,7 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
         
-        let createSnapshot (model : UnvalidatedCreateSnapshot) =
+        let createSnapshot (model : CreateSnapshot) =
             let getStream = Repository.getStream dbConnectionString
             let createSnapshot = Repository.createSnapshot dbConnectionString
             Service.createSnapshot getStream createSnapshot model  
@@ -146,8 +158,8 @@ module Functions =
 
         reader.ReadToEndAsync() 
         |> Async.AwaitTask
-        |> Async.map (JsonConvert.DeserializeObject<CreateSnapshotDto> >> CreateSnapshotDto.toModel)
-        |> Async.bind createSnapshot
+        |> Async.map (JsonConvert.DeserializeObject<CreateSnapshotDto> >> CreateSnapshotDto.toModel >> Result.mapError DomainError.ValidationError)
+        |> AsyncResult.bind createSnapshot
         |> (toActionResult logger)
         |> Async.StartAsTask 
 
@@ -156,7 +168,7 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
         
-        let appendEvents (model : UnvalidatedAppendEvents) =
+        let appendEvents (model : AppendEvents) =
             let getStream = Repository.getStream dbConnectionString
             let appendEvents = Repository.appendEvents dbConnectionString
             Service.appendEvents getStream appendEvents model  
@@ -165,7 +177,7 @@ module Functions =
 
         reader.ReadToEndAsync() 
         |> Async.AwaitTask
-        |> Async.map (JsonConvert.DeserializeObject<AppendEventsDto> >> AppendEventsDto.toModel)
-        |> Async.bind appendEvents
+        |> Async.map (JsonConvert.DeserializeObject<AppendEventsDto> >> AppendEventsDto.toModel >> Result.mapError DomainError.ValidationError)
+        |> AsyncResult.bind appendEvents
         |> (toActionResult logger)
         |> Async.StartAsTask 

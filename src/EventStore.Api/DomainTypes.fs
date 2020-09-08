@@ -1,7 +1,6 @@
 namespace EventStore.Domain
 
 open System
-open FsToolkit.ErrorHandling
 
 type StringMax = private StringMax of string
 
@@ -10,7 +9,7 @@ module StringMax =
 
     let value (StringMax x) = x
 
-    let create value =
+    let tryCreate value =
         if String.IsNullOrWhiteSpace(value)
         then None
         else Some (StringMax value) 
@@ -22,7 +21,7 @@ module String50 =
 
     let value (String50 x) = x
 
-    let create value =
+    let tryCreate value =
         if String.IsNullOrWhiteSpace(value)
         then None
         else if value.Length > 50
@@ -36,7 +35,7 @@ module String256 =
 
     let value (String256 x) = x
 
-    let create value =
+    let tryCreate value =
         if String.IsNullOrWhiteSpace(value)
         then None
         else if value.Length > 256
@@ -50,7 +49,7 @@ module NonNegativeInt =
 
     let value (NonNegativeInt x) = x
 
-    let create (value : int32) =
+    let tryCreate (value : int32) =
         if value < 0
         then None
         else Some (NonNegativeInt value)
@@ -83,102 +82,3 @@ type SnapshotsQuery = { StreamName : String256 }
 type EventsQuery = { 
     StreamName : String256
     StartAtVersion : NonNegativeInt }
-
-type UnvalidatedNewEvent = {
-    Data : string
-    Type : string }
-
-type UnvalidatedAppendEvents = {
-    ExpectedVersion : int32
-    StreamName : string
-    Events : UnvalidatedNewEvent list }
-
-type UnvalidatedCreateSnapshot = {
-    StreamName : string
-    Description : string
-    Data : string }
-
-type UnvalidatedStreamQuery = { StreamName : string }    
-
-type UnvalidatedSnapshotsQuery = { StreamName : string }
-
-type UnvalidatedEventsQuery = { 
-    StreamName : string
-    StartAtVersion : int32 }
-
-[<RequireQualifiedAccess>] 
-module Mapper =
-
-    let toCreateSnapshot (snapshot : UnvalidatedCreateSnapshot) : Result<CreateSnapshot, string> = result {
-        let! streamName = 
-            String256.create snapshot.StreamName
-            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
-
-        let! description =
-            String256.create snapshot.Description
-            |> Result.requireSome "Snapshot description is required and it must be at most 256 characters"
-        
-        let! data = 
-            StringMax.create snapshot.Data
-            |> Result.requireSome "Snapshot data is required"
-
-        return { StreamName = streamName; Description = description; Data = data }
-    }     
-    
-    let toNewEvent (event : UnvalidatedNewEvent) : Result<NewEvent, string> = result {
-        let! eventType =
-            String256.create event.Type
-            |> Result.requireSome "Event type is required and it must be at most 256 characters"
-        
-        let! data = 
-            StringMax.create event.Data
-            |> Result.requireSome "Event data is required"
-
-        return { Type = eventType; Data = data }
-    }
-
-    let toAppendEvents (appendEvents : UnvalidatedAppendEvents) : Result<AppendEvents, string> = result {        
-        let! streamName = 
-            String256.create appendEvents.StreamName
-            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
-        
-        let! version =
-            NonNegativeInt.create appendEvents.ExpectedVersion
-            |> Result.requireSome "Invalid stream version"
-
-        do! appendEvents.Events |> Result.requireNotEmpty "Cannot append to stream without events" 
-
-        let! events = 
-            appendEvents.Events 
-            |> List.traverseResultM toNewEvent
-            
-        return { StreamName = streamName; Events = events; ExpectedVersion = version }
-    }
-
-    let toStreamQuery (query : UnvalidatedStreamQuery) : Result<StreamQuery, string> = result {
-        let! streamName = 
-            String256.create query.StreamName
-            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
-
-        return { StreamName = streamName }
-    }
-
-    let toSnapshotsQuery (query : UnvalidatedSnapshotsQuery) : Result<SnapshotsQuery, string> = result {
-        let! streamName = 
-            String256.create query.StreamName
-            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
-
-        return { StreamName = streamName }
-    }
-
-    let toEventsQuery (query : UnvalidatedEventsQuery) : Result<EventsQuery, string> = result {
-        let! streamName = 
-            String256.create query.StreamName
-            |> Result.requireSome "Stream name is required and it must be at most 256 characters"
-
-        let! version =
-            NonNegativeInt.create query.StartAtVersion
-            |> Result.requireSome "Invalid stream version"
-
-        return { StreamName = streamName; StartAtVersion = version }
-    }
