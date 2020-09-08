@@ -7,11 +7,13 @@ open Microsoft.Extensions.Logging
 open Microsoft.Azure.WebJobs
 open Microsoft.Azure.WebJobs.Extensions.Http
 open EventStore.DataAccess
+open EventStore.PrivateTypes
 open EventStore.Domain
 open EventStore.Extensions
 open Newtonsoft.Json
 open FsToolkit.ErrorHandling
 open System.IO
+open System.Web.Http
 
 [<RequireQualifiedAccess>]
 module Functions =
@@ -33,7 +35,7 @@ module Functions =
                 | DomainError.InvalidVersion -> BadRequestObjectResult("Invalid stream version") :> IActionResult
                 | DomainError.DatabaseError ex -> 
                     logger.LogError(ex, ex.Message)
-                    BadRequestObjectResult("A database error has occurred") :> IActionResult
+                    InternalServerErrorResult() :> IActionResult
 
         return actionResult
     }

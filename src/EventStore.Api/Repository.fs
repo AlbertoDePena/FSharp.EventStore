@@ -5,7 +5,7 @@ open System.Data
 open Dapper
 open FsToolkit.ErrorHandling
 open System.Data.SqlClient
-open EventStore.Domain
+open EventStore.PrivateTypes
 
 [<CLIMutable>]
 type Stream = {

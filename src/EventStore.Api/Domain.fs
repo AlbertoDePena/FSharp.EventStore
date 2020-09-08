@@ -4,6 +4,7 @@ open System
 open EventStore.Extensions
 open EventStore.DataAccess
 open FsToolkit.ErrorHandling
+open EventStore.PrivateTypes
 
 [<RequireQualifiedAccess>]
 module Service =

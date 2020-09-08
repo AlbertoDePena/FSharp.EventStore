@@ -2,7 +2,7 @@ namespace EventStore.Api
 
 open System
 open EventStore.DataAccess
-open EventStore.Domain
+open EventStore.PrivateTypes
 open FsToolkit.ErrorHandling
 
 [<CLIMutable>]
