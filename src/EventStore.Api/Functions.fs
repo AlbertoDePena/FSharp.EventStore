@@ -46,61 +46,56 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        dbConnectionString
-        |> Repository.getAllStreams 
-        |> Service.getAllStreams
-        |> AsyncResult.map (List.map StreamDto.fromModel)
-        |> (toActionResult logger)
-        |> Async.StartAsTask
-        
+        let getAll = Repository.getAllStreams dbConnectionString
+        let streams = Service.getAllStreams getAll 
+
+        let asyncResult = 
+            streams 
+            |> AsyncResult.map (List.map StreamDto.fromModel)
+
+        toActionResult logger asyncResult |> Async.StartAsTask
+
     [<FunctionName("GetStream")>]
     let GetStream 
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getStream (query : UnvalidatedStreamQuery) =
-            let getStream = Repository.getStream dbConnectionString
-            Service.getStream getStream query
+        let getStream = Repository.getStream dbConnectionString
+        let stream = Service.getStream getStream
             
         let query = 
             request.TryGetQueryStringValue "streamName" 
             |> Option.defaultValue String.Empty
             |> Query.toUnvalidatedStreamQuery
 
-        query
-        |> getStream
-        |> AsyncResult.map StreamDto.fromModel
-        |> (toActionResult logger)
-        |> Async.StartAsTask 
+        let asyncResult = stream query |> AsyncResult.map StreamDto.fromModel
+
+        toActionResult logger asyncResult |> Async.StartAsTask 
         
     [<FunctionName("GetSnapshots")>]
     let GetSnapshots 
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getSnapshots (query : UnvalidatedSnapshotsQuery) =
-            let getSnapshots = Repository.getSnapshots dbConnectionString
-            Service.getSnapshots getSnapshots query  
+        let getSnapshots = Repository.getSnapshots dbConnectionString
+        let snapshots = Service.getSnapshots getSnapshots  
 
         let query =
             request.TryGetQueryStringValue "streamName" 
             |> Option.defaultValue String.Empty
             |> Query.toUnvalidatedSnapshotsQuery
         
-        query
-        |> getSnapshots
-        |> AsyncResult.map (List.map SnapshotDto.fromModel)
-        |> (toActionResult logger)
-        |> Async.StartAsTask     
+        let asyncResult = snapshots query |> AsyncResult.map (List.map SnapshotDto.fromModel)
+        
+        toActionResult logger asyncResult |> Async.StartAsTask     
         
     [<FunctionName("GetEvents")>]
     let GetEvents 
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getEvents (query : UnvalidatedEventsQuery) =
-            let getEvents = Repository.getEvents dbConnectionString
-            Service.getEvents getEvents query
+        let getEvents = Repository.getEvents dbConnectionString
+        let events = Service.getEvents getEvents
 
         let streamName =
             request.TryGetQueryStringValue "streamName" 
@@ -112,66 +107,64 @@ module Functions =
             |> Option.defaultValue 0
 
         let query = Query.toUnvalidatedEventsQuery streamName startAtVersion
-
-        query
-        |> getEvents
-        |> AsyncResult.map (List.map EventDto.fromModel)
-        |> (toActionResult logger)
-        |> Async.StartAsTask              
+        
+        let asyncResult = events query |> AsyncResult.map (List.map EventDto.fromModel)
+        
+        toActionResult logger asyncResult |> Async.StartAsTask              
 
     [<FunctionName("DeleteSnapshots")>]
     let DeleteSnapshots 
         ([<HttpTrigger(AuthorizationLevel.Function, "delete", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let deleteSnapshots (query : UnvalidatedSnapshotsQuery) =
-            let deleteSnapshots = Repository.deleteSnapshots dbConnectionString
-            Service.deleteSnapshots deleteSnapshots query 
+        let deleteSnapshots = Repository.deleteSnapshots dbConnectionString
+        let delete = Service.deleteSnapshots deleteSnapshots 
 
         let query =
             request.TryGetQueryStringValue "streamName" 
             |> Option.defaultValue String.Empty
             |> Query.toUnvalidatedSnapshotsQuery
 
-        query
-        |> deleteSnapshots
-        |> (toActionResult logger)
-        |> Async.StartAsTask   
+        let asyncResult = delete query
+
+        toActionResult logger asyncResult |> Async.StartAsTask   
         
     [<FunctionName("CreateSnapshot")>]
     let CreateSnapshot 
         ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
         
-        let createSnapshot (model : UnvalidatedCreateSnapshot) =
-            let getStream = Repository.getStream dbConnectionString
-            let createSnapshot = Repository.createSnapshot dbConnectionString
-            Service.createSnapshot getStream createSnapshot model  
+        let getStream = Repository.getStream dbConnectionString
+        let createSnapshot = Repository.createSnapshot dbConnectionString
+        let create = Service.createSnapshot getStream createSnapshot  
+        let toModel = JsonConvert.DeserializeObject<CreateSnapshotDto> >> CreateSnapshotDto.toUnvalidated
 
         use reader = new StreamReader(request.Body)
+        
+        let asyncResult = 
+            reader.ReadToEndAsync() 
+            |> Async.AwaitTask 
+            |> Async.map toModel
+            |> Async.bind create
 
-        reader.ReadToEndAsync() 
-        |> Async.AwaitTask
-        |> Async.map (JsonConvert.DeserializeObject<CreateSnapshotDto> >> CreateSnapshotDto.toUnvalidated)
-        |> Async.bind createSnapshot
-        |> (toActionResult logger)
-        |> Async.StartAsTask 
+        toActionResult logger asyncResult |> Async.StartAsTask 
 
     [<FunctionName("AppendEvents")>]
     let AppendEvents 
         ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
         
-        let appendEvents (model : UnvalidatedAppendEvents) =
-            let getStream = Repository.getStream dbConnectionString
-            let appendEvents = Repository.appendEvents dbConnectionString
-            Service.appendEvents getStream appendEvents model  
+        let getStream = Repository.getStream dbConnectionString
+        let appendEvents = Repository.appendEvents dbConnectionString
+        let append = Service.appendEvents getStream appendEvents  
+        let toModel = JsonConvert.DeserializeObject<AppendEventsDto> >> AppendEventsDto.toUnvalidated
 
         use reader = new StreamReader(request.Body)
 
-        reader.ReadToEndAsync() 
-        |> Async.AwaitTask
-        |> Async.map (JsonConvert.DeserializeObject<AppendEventsDto> >> AppendEventsDto.toUnvalidated)
-        |> Async.bind appendEvents
-        |> (toActionResult logger)
-        |> Async.StartAsTask 
+        let asyncResult = 
+            reader.ReadToEndAsync() 
+            |> Async.AwaitTask 
+            |> Async.map toModel
+            |> Async.bind append
+
+        toActionResult logger asyncResult |> Async.StartAsTask
