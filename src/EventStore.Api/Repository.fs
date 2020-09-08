@@ -5,7 +5,6 @@ open System.Data
 open Dapper
 open FsToolkit.ErrorHandling
 open System.Data.SqlClient
-open EventStore.PrivateTypes
 
 [<CLIMutable>]
 type Stream = {
@@ -35,10 +34,14 @@ type Snapshot = {
 
 type DbConnectionString = DbConnectionString of string
 
+type StreamName = StreamName of string
+
+type Version = Version of int32
+
 type RepositoryException = exn
 
 [<RequireQualifiedAccess>]
-module Database =
+module internal Database =
 
     let private storedProcedure = Nullable CommandType.StoredProcedure
 
@@ -47,13 +50,13 @@ module Database =
         connection.Open()
         connection :> IDbConnection
 
-    let getStream dbConnectionString (query : StreamQuery) = async {
+    let getStream dbConnectionString (StreamName streamName) = async {
         let toOption (x : Stream) =
             if isNull (box x)
             then None
             else Some x
 
-        let param = {| StreamName = String256.value query.StreamName |}
+        let param = {| StreamName = streamName |}
 
         use connection = getDbConnection dbConnectionString
 
@@ -76,10 +79,10 @@ module Database =
         return result
     }
 
-    let getEvents dbConnectionString (query : EventsQuery) = async {
+    let getEvents dbConnectionString (StreamName streamName) (Version startAtVersion) = async {
         let param = {| 
-            StreamName = String256.value query.StreamName
-            StartAtVersion = NonNegativeInt.value query.StartAtVersion |}
+            StreamName = streamName
+            StartAtVersion = startAtVersion |}
 
         use connection = getDbConnection dbConnectionString
 
@@ -91,8 +94,8 @@ module Database =
         return result
     }
 
-    let getSnapshots dbConnectionString (query : SnapshotsQuery) = async {
-        let param = {| StreamName = String256.value query.StreamName |}
+    let getSnapshots dbConnectionString (StreamName streamName) = async {
+        let param = {| StreamName = streamName |}
 
         use connection = getDbConnection dbConnectionString
 
@@ -122,8 +125,8 @@ module Database =
         return result
     }
 
-    let deleteSnapshots dbConnectionString (query : SnapshotsQuery) = async {
-        let param = {| StreamName = String256.value query.StreamName |}
+    let deleteSnapshots dbConnectionString (StreamName streamName) = async {
+        let param = {| StreamName = streamName |}
 
         use connection = getDbConnection dbConnectionString
 
@@ -168,15 +171,15 @@ module Database =
 [<RequireQualifiedAccess>]
 module Repository =
 
-    type GetStream = StreamQuery -> Async<Result<Stream option, RepositoryException>>
+    type GetStream = StreamName -> Async<Result<Stream option, RepositoryException>>
 
     type GetAllStreams = unit -> Async<Result<Stream list, RepositoryException>>
 
-    type GetEvents = EventsQuery -> Async<Result<Event list, RepositoryException>>
+    type GetEvents = StreamName -> Version -> Async<Result<Event list, RepositoryException>>
 
-    type GetSnapshots = SnapshotsQuery -> Async<Result<Snapshot list, RepositoryException>>
+    type GetSnapshots = StreamName -> Async<Result<Snapshot list, RepositoryException>>
 
-    type DeleteSnapshots = SnapshotsQuery -> Async<Result<unit, RepositoryException>>
+    type DeleteSnapshots = StreamName -> Async<Result<unit, RepositoryException>>
 
     type AppendEvents = Stream -> Event list -> Async<Result<unit, RepositoryException>>
 
@@ -195,14 +198,14 @@ module Repository =
             |> Async.map Result.ofChoice
           
     let getEvents dbConnectionString: GetEvents =
-        fun query -> 
-            Database.getEvents dbConnectionString query
+        fun streamName startAtVersion -> 
+            Database.getEvents dbConnectionString streamName startAtVersion
             |> Async.Catch
             |> Async.map Result.ofChoice
 
     let getSnapshots dbConnectionString : GetSnapshots =
-        fun query -> 
-            Database.getSnapshots dbConnectionString query
+        fun streamName -> 
+            Database.getSnapshots dbConnectionString streamName
             |> Async.Catch
             |> Async.map Result.ofChoice
 
@@ -213,8 +216,8 @@ module Repository =
             |> Async.map Result.ofChoice
 
     let deleteSnapshots dbConnectionString : DeleteSnapshots =
-        fun query -> 
-            Database.deleteSnapshots dbConnectionString query
+        fun streamName -> 
+            Database.deleteSnapshots dbConnectionString streamName
             |> Async.Catch
             |> Async.map Result.ofChoice
 

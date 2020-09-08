@@ -1,10 +1,11 @@
 namespace EventStore.Domain
 
 open System
+open FsToolkit.ErrorHandling
 open EventStore.Extensions
 open EventStore.DataAccess
-open FsToolkit.ErrorHandling
 open EventStore.PrivateTypes
+open EventStore.PublicTypes
 
 [<RequireQualifiedAccess>]
 module Service =
@@ -12,30 +13,56 @@ module Service =
     let getAllStreams (getAllStreams : Repository.GetAllStreams) = 
         getAllStreams ()
         |> AsyncResult.mapError DomainError.DatabaseError
-
-    let getStream (getStream : Repository.GetStream) (query : StreamQuery) =
+        |> AsyncResult.map (List.map Stream.fromEntity)
+        
+    let getStream (getStream : Repository.GetStream) (query : UnvalidatedStreamQuery) =
         query
-        |> getStream
-        |> AsyncResult.mapError DomainError.DatabaseError
-        |> AsyncResult.bind (Async.singleton >> AsyncResult.requireSome DomainError.StreamNotFound)
+        |> UnvalidatedStreamQuery.validate
+        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
+        |> Result.mapError DomainError.ValidationError
+        |> Async.singleton
+        |> AsyncResult.bind (
+            getStream >> 
+            AsyncResult.mapError DomainError.DatabaseError)
+        |> AsyncResult.bind (
+            Async.singleton 
+            >> AsyncResult.requireSome DomainError.StreamNotFound 
+            >> AsyncResult.map Stream.fromEntity)
 
-    let getSnapshots (getSnapshots : Repository.GetSnapshots) (query : SnapshotsQuery) =
+    let getSnapshots (getSnapshots : Repository.GetSnapshots) (query : UnvalidatedSnapshotsQuery) =
         query
-        |> getSnapshots
-        |> AsyncResult.mapError DomainError.DatabaseError
+        |> UnvalidatedSnapshotsQuery.validate
+        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
+        |> Result.mapError DomainError.ValidationError
+        |> Async.singleton
+        |> AsyncResult.bind (
+            getSnapshots 
+            >> AsyncResult.mapError DomainError.DatabaseError
+            >> AsyncResult.map (List.map Snapshot.fromEntity))
 
-    let getEvents (getEvents : Repository.GetEvents) (query : EventsQuery) = 
+    let getEvents (getEvents : Repository.GetEvents) (query : UnvalidatedEventsQuery) = 
         query
-        |> getEvents
-        |> AsyncResult.mapError DomainError.DatabaseError
+        |> UnvalidatedEventsQuery.validate
+        |> Result.map (fun q -> (String256.value q.StreamName |> StreamName, NonNegativeInt.value q.StartAtVersion |> Version))
+        |> Result.mapError DomainError.ValidationError
+        |> Async.singleton
+        |> AsyncResult.bind (fun (streamName, startAtVersion) -> 
+            getEvents streamName startAtVersion 
+            |> AsyncResult.mapError DomainError.DatabaseError
+            |> AsyncResult.map (List.map Event.fromEntity))
 
-    let deleteSnapshots (deleteSnapshots : Repository.DeleteSnapshots) (query : SnapshotsQuery) =
+    let deleteSnapshots (deleteSnapshots : Repository.DeleteSnapshots) (query : UnvalidatedSnapshotsQuery) =
         query
-        |> deleteSnapshots 
-        |> AsyncResult.mapError DomainError.DatabaseError
+        |> UnvalidatedSnapshotsQuery.validate
+        |> Result.map (fun q -> String256.value q.StreamName |> StreamName)
+        |> Result.mapError DomainError.ValidationError
+        |> Async.singleton
+        |> AsyncResult.bind (
+            deleteSnapshots 
+            >> AsyncResult.mapError DomainError.DatabaseError)
 
-    let createSnapshot (getStream : Repository.GetStream) (createSnapshot : Repository.CreateSnapshot) (model : CreateSnapshot) =        
-        let toSnapshot (model : CreateSnapshot) (stream : Stream) : Snapshot = {
+    let createSnapshot (getStream : Repository.GetStream) (createSnapshot : Repository.CreateSnapshot) (model : UnvalidatedCreateSnapshot) =        
+        let toSnapshot (model : CreateSnapshot) (stream : EventStore.DataAccess.Stream) : EventStore.DataAccess.Snapshot = {
             SnapshotId = Guid.NewGuid().ToString("D")
             StreamId = stream.StreamId
             Version = stream.Version
@@ -43,18 +70,26 @@ module Service =
             Data = StringMax.value model.Data
             CreatedAt = DateTimeOffset.UtcNow }
 
-        let query : StreamQuery = { StreamName = model.StreamName }
-
-        query
-        |> getStream
-        |> AsyncResult.mapError DomainError.DatabaseError
-        |> AsyncResult.bind (Async.singleton >> AsyncResult.requireSome DomainError.StreamNotFound)
-        |> AsyncResult.map (toSnapshot model)
-        |> AsyncResult.bind (createSnapshot >> AsyncResult.mapError DomainError.DatabaseError)
-
-    let appendEvents (getStream : Repository.GetStream) (appendEvents : Repository.AppendEvents) (model : AppendEvents) =
+        model
+        |> UnvalidatedCreateSnapshot.validate
+        |> Result.mapError DomainError.ValidationError
+        |> Async.singleton
+        |> AsyncResult.bind (fun model ->
+            let streamName = String256.value model.StreamName |> StreamName
+            getStream streamName
+            |> AsyncResult.mapError DomainError.DatabaseError
+            |> AsyncResult.bind (fun streamOption ->
+                Async.singleton streamOption
+                |> AsyncResult.requireSome DomainError.StreamNotFound
+                |> AsyncResult.bind (fun stream -> 
+                    toSnapshot model stream 
+                    |> createSnapshot 
+                    |> AsyncResult.mapError DomainError.DatabaseError)))
         
-        let toEvents (model : AppendEvents) (streamOption : Stream option) =            
+
+    let appendEvents (getStream : Repository.GetStream) (appendEvents : Repository.AppendEvents) (model : UnvalidatedAppendEvents) =
+        
+        let toEvents (model : AppendEvents) (streamOption : EventStore.DataAccess.Stream option) =            
             let stream =
                 match streamOption with
                 | Some stream -> stream
@@ -68,7 +103,7 @@ module Service =
             if stream.Version <> (NonNegativeInt.value model.ExpectedVersion) then 
                 Error (DomainError.InvalidVersion)
             else
-                let toEvent (index : int) (eventModel : NewEvent) = {
+                let toEvent (index : int) (eventModel : NewEvent) : EventStore.DataAccess.Event = {
                     EventId = Guid.NewGuid().ToString("D")
                     StreamId = stream.StreamId
                     Version = stream.Version + index + 1
@@ -78,10 +113,17 @@ module Service =
 
                 Ok (stream, model.Events |> List.mapi toEvent)
 
-        let query : StreamQuery = { StreamName = model.StreamName }
-
-        query
-        |> getStream
-        |> AsyncResult.mapError DomainError.DatabaseError
-        |> AsyncResult.bind (toEvents model >> Async.singleton)
-        |> AsyncResult.bind (fun (stream, events) -> appendEvents stream events |> AsyncResult.mapError DomainError.DatabaseError)
+        model
+        |> UnvalidatedAppendEvents.validate
+        |> Result.mapError DomainError.ValidationError
+        |> Async.singleton
+        |> AsyncResult.bind (fun model ->
+            let streamName = String256.value model.StreamName |> StreamName
+            getStream streamName
+            |> AsyncResult.mapError DomainError.DatabaseError
+            |> AsyncResult.bind (fun streamOption ->
+                toEvents model streamOption 
+                |> Async.singleton
+                |> AsyncResult.bind (fun (stream, events) ->
+                    appendEvents stream events 
+                    |> AsyncResult.mapError DomainError.DatabaseError)))

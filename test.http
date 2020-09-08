@@ -2,16 +2,16 @@
 GET http://localhost:7071/api/GetAllStreams
 
 ###
-GET http://localhost:7071/api/GetStream?streamName=Test
+GET http://localhost:7071/api/GetStream?streamName=Test1
 
 ###
-GET http://localhost:7071/api/GetEvents?streamName=Test&startAtVersion=0
+GET http://localhost:7071/api/GetEvents?streamName=Test1&startAtVersion=0
 
 ###
-GET http://localhost:7071/api/GetSnapshots?streamName=Test
+GET http://localhost:7071/api/GetSnapshots?streamName=Test1
 
 ###
-DELETE  http://localhost:7071/api/DeleteSnapshots?streamName=Test
+DELETE  http://localhost:7071/api/DeleteSnapshots?streamName=Test1
 
 ###
 POST http://localhost:7071/api/CreateSnapshot
@@ -20,7 +20,7 @@ Content-Type: application/json
 {
     "data": "adsasda",
     "description": "This is a test",
-    "streamName": "Test"
+    "streamName": "Test1"
 }
 
 ###
