@@ -8,7 +8,6 @@ open Microsoft.Azure.WebJobs
 open Microsoft.Azure.WebJobs.Extensions.Http
 open EventStore.DataAccess
 open EventStore.PrivateTypes
-open EventStore.PublicTypes
 open EventStore.Domain
 open EventStore.Extensions
 open Newtonsoft.Json
