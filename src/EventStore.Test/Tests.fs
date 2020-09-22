@@ -2,27 +2,28 @@ module Tests
 
 open System
 open Xunit
+open EventStore.Extensions
 open EventStore.DomainTypes
 open EventStore.DataAccessTypes
 open EventStore.Domain
 open FsToolkit.ErrorHandling
 
-let isDomainValidationError result =
+let isValidationErrorResult result =
     match result with
     | Error (DomainError.ValidationError _) -> true
     | _ -> false
 
-let isDomainInvalidVersion result =
+let isInvalidVersionResult result =
     match result with
     | Error (DomainError.InvalidVersion) -> true
     | _ -> false
 
-let isDomainStreamNotFound result =
+let isStreamNotFoundResult result =
     match result with
     | Error (DomainError.StreamNotFound) -> true
     | _ -> false
 
-let isDomainDatabaseError result =
+let isDatabaseErrorResult result =
     match result with
     | Error (DomainError.DatabaseError _) -> true
     | _ -> false
@@ -38,10 +39,10 @@ let ``Get All Streams with data access error should yield DomainError.DatabaseEr
     let computation =  async {
         let! result = Service.getAllStreams dbCall
 
-        Assert.True(isDomainDatabaseError result)
-        Assert.False(isDomainInvalidVersion result)
-        Assert.False(isDomainStreamNotFound result)
-        Assert.False(isDomainValidationError result)
+        Assert.True(isDatabaseErrorResult result)
+        Assert.False(isInvalidVersionResult result)
+        Assert.False(isStreamNotFoundResult result)
+        Assert.False(isValidationErrorResult result)
     }
 
-    Async.RunSynchronously computation
+    Async.AsTask computation
