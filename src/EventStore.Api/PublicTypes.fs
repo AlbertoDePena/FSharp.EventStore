@@ -75,7 +75,7 @@ module UnvalidatedNewEvent =
             |> Result.requireSome "Event type is required and it must be at most 256 characters"
         
         let! data = 
-            StringMax.tryCreate model.Data
+            StringUnbounded.tryCreate model.Data
             |> Result.requireSome "Event data is required"
 
         return { Type = eventType; Data = data }
@@ -125,7 +125,7 @@ module UnvalidatedCreateSnapshot =
             |> Result.requireSome "Snapshot description is required and it must be at most 256 characters"
         
         let! data = 
-            StringMax.tryCreate model.Data
+            StringUnbounded.tryCreate model.Data
             |> Result.requireSome "Snapshot data is required"
 
         return { StreamName = streamName; Description = description; Data = data }

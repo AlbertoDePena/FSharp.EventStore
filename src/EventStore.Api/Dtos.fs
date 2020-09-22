@@ -14,7 +14,7 @@ type StreamDto = {
 [<RequireQualifiedAccess>]
 module StreamDto =
     
-    let fromModel (stream : Stream) : StreamDto = {
+    let fromDomain (stream : Stream) : StreamDto = {
         StreamId = stream.StreamId
         Name = stream.Name
         Version = stream.Version
@@ -34,7 +34,7 @@ type EventDto = {
 [<RequireQualifiedAccess>]
 module EventDto =
 
-    let fromModel (event : Event) : EventDto = {
+    let fromDomain (event : Event) : EventDto = {
         EventId = event.EventId
         StreamId = event.StreamId
         Version = event.Version
@@ -55,7 +55,7 @@ type SnapshotDto = {
 [<RequireQualifiedAccess>]
 module SnapshotDto =
 
-    let fromModel (snapshot : Snapshot) : SnapshotDto = {
+    let fromDomain (snapshot : Snapshot) : SnapshotDto = {
         SnapshotId = snapshot.SnapshotId
         StreamId = snapshot.StreamId
         Version = snapshot.Version

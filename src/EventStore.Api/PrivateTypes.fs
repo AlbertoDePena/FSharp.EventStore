@@ -2,17 +2,17 @@ namespace EventStore.PrivateTypes
 
 open System
 
-type StringMax = private StringMax of string
+type StringUnbounded = private StringUnbounded of string
 
 [<RequireQualifiedAccess>]
-module StringMax =
+module StringUnbounded =
 
-    let value (StringMax x) = x
+    let value (StringUnbounded x) = x
 
     let tryCreate value =
         if String.IsNullOrWhiteSpace(value)
         then None
-        else Some (StringMax value) 
+        else Some (StringUnbounded value) 
 
 type String50 = private String50 of string
 
@@ -62,7 +62,7 @@ type DomainError =
     | DatabaseError of ex : Exception
 
 type NewEvent = {
-    Data : StringMax
+    Data : StringUnbounded
     Type : String256 }
 
 type AppendEvents = {
@@ -73,7 +73,7 @@ type AppendEvents = {
 type CreateSnapshot = {
     StreamName : String256
     Description : String256
-    Data : StringMax }
+    Data : StringUnbounded }
 
 type StreamQuery = { StreamName : String256 }    
 

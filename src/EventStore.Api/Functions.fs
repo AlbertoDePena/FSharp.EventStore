@@ -50,7 +50,7 @@ module Functions =
 
         let asyncResult = 
             streams 
-            |> AsyncResult.map (List.map StreamDto.fromModel)
+            |> AsyncResult.map (List.map StreamDto.fromDomain)
 
         toActionResult logger asyncResult |> Async.StartAsTask
 
@@ -67,7 +67,7 @@ module Functions =
             |> Option.defaultValue String.Empty
             |> Query.toUnvalidatedStreamQuery
 
-        let asyncResult = stream query |> AsyncResult.map StreamDto.fromModel
+        let asyncResult = stream query |> AsyncResult.map StreamDto.fromDomain
 
         toActionResult logger asyncResult |> Async.StartAsTask 
         
@@ -84,7 +84,7 @@ module Functions =
             |> Option.defaultValue String.Empty
             |> Query.toUnvalidatedSnapshotsQuery
         
-        let asyncResult = snapshots query |> AsyncResult.map (List.map SnapshotDto.fromModel)
+        let asyncResult = snapshots query |> AsyncResult.map (List.map SnapshotDto.fromDomain)
         
         toActionResult logger asyncResult |> Async.StartAsTask     
         
@@ -107,7 +107,7 @@ module Functions =
 
         let query = Query.toUnvalidatedEventsQuery streamName startAtVersion
         
-        let asyncResult = events query |> AsyncResult.map (List.map EventDto.fromModel)
+        let asyncResult = events query |> AsyncResult.map (List.map EventDto.fromDomain)
         
         toActionResult logger asyncResult |> Async.StartAsTask              
 
@@ -136,14 +136,14 @@ module Functions =
         let getStream = Repository.getStream dbConnectionString
         let createSnapshot = Repository.createSnapshot dbConnectionString
         let create = Service.createSnapshot getStream createSnapshot  
-        let toModel = JsonConvert.DeserializeObject<CreateSnapshotDto> >> CreateSnapshotDto.toUnvalidated
+        let toUnvalidated = JsonConvert.DeserializeObject<CreateSnapshotDto> >> CreateSnapshotDto.toUnvalidated
 
         use reader = new StreamReader(request.Body)
         
         let asyncResult = 
             reader.ReadToEndAsync() 
             |> Async.AwaitTask 
-            |> Async.map toModel
+            |> Async.map toUnvalidated
             |> Async.bind create
 
         toActionResult logger asyncResult |> Async.StartAsTask 
@@ -156,14 +156,14 @@ module Functions =
         let getStream = Repository.getStream dbConnectionString
         let appendEvents = Repository.appendEvents dbConnectionString
         let append = Service.appendEvents getStream appendEvents  
-        let toModel = JsonConvert.DeserializeObject<AppendEventsDto> >> AppendEventsDto.toUnvalidated
+        let toUnvalidated = JsonConvert.DeserializeObject<AppendEventsDto> >> AppendEventsDto.toUnvalidated
 
         use reader = new StreamReader(request.Body)
 
         let asyncResult = 
             reader.ReadToEndAsync() 
             |> Async.AwaitTask 
-            |> Async.map toModel
+            |> Async.map toUnvalidated
             |> Async.bind append
 
         toActionResult logger asyncResult |> Async.StartAsTask

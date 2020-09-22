@@ -67,7 +67,7 @@ module Service =
             StreamId = stream.StreamId
             Version = stream.Version
             Description = String256.value model.Description
-            Data = StringMax.value model.Data
+            Data = StringUnbounded.value model.Data
             CreatedAt = DateTimeOffset.UtcNow }
 
         model
@@ -108,7 +108,7 @@ module Service =
                     StreamId = stream.StreamId
                     Version = stream.Version + index + 1
                     Type = String256.value eventModel.Type
-                    Data = StringMax.value eventModel.Data
+                    Data = StringUnbounded.value eventModel.Data
                     CreatedAt = DateTimeOffset.UtcNow }
 
                 Ok (stream, model.Events |> List.mapi toEvent)
