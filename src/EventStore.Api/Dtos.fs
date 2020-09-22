@@ -13,7 +13,7 @@ type StreamDto = {
 [<RequireQualifiedAccess>]
 module StreamDto =
     
-    let fromEntity (stream : EventStore.DataAccess.Stream) : StreamDto = {
+    let fromEntity (stream : EventStore.DataAccessTypes.Stream) : StreamDto = {
         StreamId = stream.StreamId
         Name = stream.Name
         Version = stream.Version
@@ -33,7 +33,7 @@ type EventDto = {
 [<RequireQualifiedAccess>]
 module EventDto =
 
-    let fromEntity (event : EventStore.DataAccess.Event) : EventDto = {
+    let fromEntity (event : EventStore.DataAccessTypes.Event) : EventDto = {
         EventId = event.EventId
         StreamId = event.StreamId
         Version = event.Version
@@ -54,7 +54,7 @@ type SnapshotDto = {
 [<RequireQualifiedAccess>]
 module SnapshotDto =
 
-    let fromEntity (snapshot : EventStore.DataAccess.Snapshot) : SnapshotDto = {
+    let fromEntity (snapshot : EventStore.DataAccessTypes.Snapshot) : SnapshotDto = {
         SnapshotId = snapshot.SnapshotId
         StreamId = snapshot.StreamId
         Version = snapshot.Version
@@ -71,7 +71,7 @@ type NewEventDto = {
 [<RequireQualifiedAccess>]
 module NewEventDto =
 
-    let toUnvalidated (dto : NewEventDto) : EventStore.PublicTypes.UnvalidatedNewEvent = {
+    let toUnvalidated (dto : NewEventDto) : EventStore.DomainTypes.UnvalidatedNewEvent = {
         Type = dto.Type
         Data = dto.Data
     }
@@ -85,7 +85,7 @@ type AppendEventsDto = {
 [<RequireQualifiedAccess>]    
 module AppendEventsDto =
 
-    let toUnvalidated (dto : AppendEventsDto) : EventStore.PublicTypes.UnvalidatedAppendEvents = {
+    let toUnvalidated (dto : AppendEventsDto) : EventStore.DomainTypes.UnvalidatedAppendEvents = {
         StreamName = dto.StreamName
         ExpectedVersion = dto.ExpectedVersion
         Events = 
@@ -103,7 +103,7 @@ type CreateSnapshotDto = {
 [<RequireQualifiedAccess>]    
 module CreateSnapshotDto =
 
-    let toUnvalidated (dto : CreateSnapshotDto) : EventStore.PublicTypes.UnvalidatedCreateSnapshot = {
+    let toUnvalidated (dto : CreateSnapshotDto) : EventStore.DomainTypes.UnvalidatedCreateSnapshot = {
         StreamName = dto.StreamName
         Data = dto.Data
         Description = dto.Description
@@ -112,11 +112,11 @@ module CreateSnapshotDto =
 [<RequireQualifiedAccess>]
 module Query =
     
-    let toUnvalidatedStreamQuery (streamName : string) : EventStore.PublicTypes.UnvalidatedStreamQuery = 
+    let toUnvalidatedStreamQuery (streamName : string) : EventStore.DomainTypes.UnvalidatedStreamQuery = 
         { StreamName = streamName }
 
-    let toUnvalidatedSnapshotsQuery (streamName : string) : EventStore.PublicTypes.UnvalidatedSnapshotsQuery = 
+    let toUnvalidatedSnapshotsQuery (streamName : string) : EventStore.DomainTypes.UnvalidatedSnapshotsQuery = 
         { StreamName = streamName }
     
-    let toUnvalidatedEventsQuery (streamName : string) (startAtVersion : int32) : EventStore.PublicTypes.UnvalidatedEventsQuery = 
+    let toUnvalidatedEventsQuery (streamName : string) (startAtVersion : int32) : EventStore.DomainTypes.UnvalidatedEventsQuery = 
         { StreamName = streamName; StartAtVersion = startAtVersion }
