@@ -1,66 +1,7 @@
 namespace EventStore.PublicTypes
 
-open System
 open FsToolkit.ErrorHandling
-open EventStore.PrivateTypes
-
-type Stream = {
-    StreamId : string
-    Version : int32
-    Name : string
-    CreatedAt : DateTimeOffset
-    UpdatedAt : DateTimeOffset Nullable }
-
-[<RequireQualifiedAccess>]
-module Stream =
-
-    let fromEntity (entity : EventStore.DataAccess.Stream) = {
-        StreamId = entity.StreamId
-        Name = entity.Name
-        Version = entity.Version
-        CreatedAt = entity.CreatedAt
-        UpdatedAt = entity.UpdatedAt
-    }
-
-type Event = {
-    EventId : string
-    StreamId : string
-    Version : int32
-    Data : string
-    Type : string    
-    CreatedAt : DateTimeOffset }
-
-[<RequireQualifiedAccess>]
-module Event =
-
-    let fromEntity (entity : EventStore.DataAccess.Event) = {
-        EventId = entity.EventId
-        StreamId = entity.StreamId
-        Version = entity.Version
-        Type = entity.Type
-        Data = entity.Data
-        CreatedAt = entity.CreatedAt
-    }
-
-type Snapshot = {
-    SnapshotId : string
-    StreamId : string
-    Version : int32
-    Data : string
-    Description : string    
-    CreatedAt : DateTimeOffset }
-
-[<RequireQualifiedAccess>]
-module Snapshot =
-
-    let fromEntity (entity : EventStore.DataAccess.Snapshot) = {
-        SnapshotId = entity.SnapshotId
-        StreamId = entity.StreamId
-        Version = entity.Version
-        Description = entity.Description
-        Data = entity.Data
-        CreatedAt = entity.CreatedAt
-    }
+open EventStore.DomainTypes
 
 type UnvalidatedNewEvent = {
     Data : string

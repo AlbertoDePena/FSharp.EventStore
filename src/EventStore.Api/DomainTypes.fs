@@ -1,4 +1,4 @@
-namespace EventStore.PrivateTypes
+namespace EventStore.DomainTypes
 
 open System
 

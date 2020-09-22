@@ -4,7 +4,7 @@ open System
 open FsToolkit.ErrorHandling
 open EventStore.Extensions
 open EventStore.DataAccess
-open EventStore.PrivateTypes
+open EventStore.DomainTypes
 open EventStore.PublicTypes
 
 [<RequireQualifiedAccess>]
@@ -13,7 +13,6 @@ module Service =
     let getAllStreams (getAllStreams : Repository.GetAllStreams) = 
         getAllStreams ()
         |> AsyncResult.mapError DomainError.DatabaseError
-        |> AsyncResult.map (List.map Stream.fromEntity)
         
     let getStream (getStream : Repository.GetStream) (query : UnvalidatedStreamQuery) =
         query
@@ -26,8 +25,7 @@ module Service =
             AsyncResult.mapError DomainError.DatabaseError)
         |> AsyncResult.bind (
             Async.singleton 
-            >> AsyncResult.requireSome DomainError.StreamNotFound 
-            >> AsyncResult.map Stream.fromEntity)
+            >> AsyncResult.requireSome DomainError.StreamNotFound)
 
     let getSnapshots (getSnapshots : Repository.GetSnapshots) (query : UnvalidatedSnapshotsQuery) =
         query
@@ -37,8 +35,7 @@ module Service =
         |> Async.singleton
         |> AsyncResult.bind (
             getSnapshots 
-            >> AsyncResult.mapError DomainError.DatabaseError
-            >> AsyncResult.map (List.map Snapshot.fromEntity))
+            >> AsyncResult.mapError DomainError.DatabaseError)
 
     let getEvents (getEvents : Repository.GetEvents) (query : UnvalidatedEventsQuery) = 
         query
@@ -48,8 +45,7 @@ module Service =
         |> Async.singleton
         |> AsyncResult.bind (fun (streamName, startAtVersion) -> 
             getEvents streamName startAtVersion 
-            |> AsyncResult.mapError DomainError.DatabaseError
-            |> AsyncResult.map (List.map Event.fromEntity))
+            |> AsyncResult.mapError DomainError.DatabaseError)
 
     let deleteSnapshots (deleteSnapshots : Repository.DeleteSnapshots) (query : UnvalidatedSnapshotsQuery) =
         query

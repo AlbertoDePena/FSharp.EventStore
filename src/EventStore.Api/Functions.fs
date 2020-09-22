@@ -7,7 +7,7 @@ open Microsoft.Extensions.Logging
 open Microsoft.Azure.WebJobs
 open Microsoft.Azure.WebJobs.Extensions.Http
 open EventStore.DataAccess
-open EventStore.PrivateTypes
+open EventStore.DomainTypes
 open EventStore.Domain
 open EventStore.Extensions
 open Newtonsoft.Json
@@ -50,7 +50,7 @@ module Functions =
 
         let asyncResult = 
             streams 
-            |> AsyncResult.map (List.map StreamDto.fromDomain)
+            |> AsyncResult.map (List.map StreamDto.fromEntity)
 
         toActionResult logger asyncResult |> Async.StartAsTask
 
@@ -67,7 +67,7 @@ module Functions =
             |> Option.defaultValue String.Empty
             |> Query.toUnvalidatedStreamQuery
 
-        let asyncResult = stream query |> AsyncResult.map StreamDto.fromDomain
+        let asyncResult = stream query |> AsyncResult.map StreamDto.fromEntity
 
         toActionResult logger asyncResult |> Async.StartAsTask 
         
@@ -84,7 +84,7 @@ module Functions =
             |> Option.defaultValue String.Empty
             |> Query.toUnvalidatedSnapshotsQuery
         
-        let asyncResult = snapshots query |> AsyncResult.map (List.map SnapshotDto.fromDomain)
+        let asyncResult = snapshots query |> AsyncResult.map (List.map SnapshotDto.fromEntity)
         
         toActionResult logger asyncResult |> Async.StartAsTask     
         
@@ -107,7 +107,7 @@ module Functions =
 
         let query = Query.toUnvalidatedEventsQuery streamName startAtVersion
         
-        let asyncResult = events query |> AsyncResult.map (List.map EventDto.fromDomain)
+        let asyncResult = events query |> AsyncResult.map (List.map EventDto.fromEntity)
         
         toActionResult logger asyncResult |> Async.StartAsTask              
 

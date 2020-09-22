@@ -1,7 +1,6 @@
 namespace EventStore.Api
 
 open System
-open EventStore.PublicTypes
 
 [<CLIMutable>]
 type StreamDto = {
@@ -14,7 +13,7 @@ type StreamDto = {
 [<RequireQualifiedAccess>]
 module StreamDto =
     
-    let fromDomain (stream : Stream) : StreamDto = {
+    let fromEntity (stream : EventStore.DataAccess.Stream) : StreamDto = {
         StreamId = stream.StreamId
         Name = stream.Name
         Version = stream.Version
@@ -34,7 +33,7 @@ type EventDto = {
 [<RequireQualifiedAccess>]
 module EventDto =
 
-    let fromDomain (event : Event) : EventDto = {
+    let fromEntity (event : EventStore.DataAccess.Event) : EventDto = {
         EventId = event.EventId
         StreamId = event.StreamId
         Version = event.Version
@@ -55,7 +54,7 @@ type SnapshotDto = {
 [<RequireQualifiedAccess>]
 module SnapshotDto =
 
-    let fromDomain (snapshot : Snapshot) : SnapshotDto = {
+    let fromEntity (snapshot : EventStore.DataAccess.Snapshot) : SnapshotDto = {
         SnapshotId = snapshot.SnapshotId
         StreamId = snapshot.StreamId
         Version = snapshot.Version
@@ -72,7 +71,7 @@ type NewEventDto = {
 [<RequireQualifiedAccess>]
 module NewEventDto =
 
-    let toUnvalidated (dto : NewEventDto) : UnvalidatedNewEvent = {
+    let toUnvalidated (dto : NewEventDto) : EventStore.PublicTypes.UnvalidatedNewEvent = {
         Type = dto.Type
         Data = dto.Data
     }
@@ -86,7 +85,7 @@ type AppendEventsDto = {
 [<RequireQualifiedAccess>]    
 module AppendEventsDto =
 
-    let toUnvalidated (dto : AppendEventsDto) : UnvalidatedAppendEvents = {
+    let toUnvalidated (dto : AppendEventsDto) : EventStore.PublicTypes.UnvalidatedAppendEvents = {
         StreamName = dto.StreamName
         ExpectedVersion = dto.ExpectedVersion
         Events = 
@@ -104,7 +103,7 @@ type CreateSnapshotDto = {
 [<RequireQualifiedAccess>]    
 module CreateSnapshotDto =
 
-    let toUnvalidated (dto : CreateSnapshotDto) : UnvalidatedCreateSnapshot = {
+    let toUnvalidated (dto : CreateSnapshotDto) : EventStore.PublicTypes.UnvalidatedCreateSnapshot = {
         StreamName = dto.StreamName
         Data = dto.Data
         Description = dto.Description
@@ -113,11 +112,11 @@ module CreateSnapshotDto =
 [<RequireQualifiedAccess>]
 module Query =
     
-    let toUnvalidatedStreamQuery (streamName : string) : UnvalidatedStreamQuery = 
+    let toUnvalidatedStreamQuery (streamName : string) : EventStore.PublicTypes.UnvalidatedStreamQuery = 
         { StreamName = streamName }
 
-    let toUnvalidatedSnapshotsQuery (streamName : string) : UnvalidatedSnapshotsQuery = 
+    let toUnvalidatedSnapshotsQuery (streamName : string) : EventStore.PublicTypes.UnvalidatedSnapshotsQuery = 
         { StreamName = streamName }
     
-    let toUnvalidatedEventsQuery (streamName : string) (startAtVersion : int32) : UnvalidatedEventsQuery = 
+    let toUnvalidatedEventsQuery (streamName : string) (startAtVersion : int32) : EventStore.PublicTypes.UnvalidatedEventsQuery = 
         { StreamName = streamName; StartAtVersion = startAtVersion }
