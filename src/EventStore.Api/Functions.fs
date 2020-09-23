@@ -46,7 +46,7 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getAll = Repository.getAllStreams dbConnectionString
+        let getAll = Database.getAllStreams dbConnectionString
         let streams = Service.getAllStreams getAll 
 
         let asyncResult = 
@@ -60,7 +60,7 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getStream = Repository.getStream dbConnectionString
+        let getStream = Database.getStream dbConnectionString
         let stream = Service.getStream getStream
             
         let query = 
@@ -77,7 +77,7 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getSnapshots = Repository.getSnapshots dbConnectionString
+        let getSnapshots = Database.getSnapshots dbConnectionString
         let snapshots = Service.getSnapshots getSnapshots  
 
         let query =
@@ -94,7 +94,7 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "get", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let getEvents = Repository.getEvents dbConnectionString
+        let getEvents = Database.getEvents dbConnectionString
         let events = Service.getEvents getEvents
 
         let streamName =
@@ -117,7 +117,7 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "delete", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
 
-        let deleteSnapshots = Repository.deleteSnapshots dbConnectionString
+        let deleteSnapshots = Database.deleteSnapshots dbConnectionString
         let delete = Service.deleteSnapshots deleteSnapshots 
 
         let query =
@@ -134,8 +134,8 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
         
-        let getStream = Repository.getStream dbConnectionString
-        let createSnapshot = Repository.createSnapshot dbConnectionString
+        let getStream = Database.getStream dbConnectionString
+        let createSnapshot = Database.createSnapshot dbConnectionString
         let create = Service.createSnapshot getStream createSnapshot  
         let toUnvalidated = JsonConvert.DeserializeObject<CreateSnapshotDto> >> CreateSnapshotDto.toUnvalidated
 
@@ -154,8 +154,8 @@ module Functions =
         ([<HttpTrigger(AuthorizationLevel.Function, "post", Route = null)>] request: HttpRequest) 
         (logger: ILogger) =
         
-        let getStream = Repository.getStream dbConnectionString
-        let appendEvents = Repository.appendEvents dbConnectionString
+        let getStream = Database.getStream dbConnectionString
+        let appendEvents = Database.appendEvents dbConnectionString
         let append = Service.appendEvents getStream appendEvents  
         let toUnvalidated = JsonConvert.DeserializeObject<AppendEventsDto> >> AppendEventsDto.toUnvalidated
 

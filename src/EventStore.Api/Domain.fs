@@ -11,6 +11,8 @@ module Service =
 
     let getAllStreams (getAllStreams : EventStore.DataAccessTypes.GetAllStreams) = 
         getAllStreams ()
+        |> Async.Catch
+        |> Async.map Result.ofChoice
         |> AsyncResult.mapError DomainError.DatabaseError
         
     let getStream (getStream : EventStore.DataAccessTypes.GetStream) (query : UnvalidatedStreamQuery) =
@@ -20,8 +22,10 @@ module Service =
         |> Result.mapError DomainError.ValidationError
         |> Async.singleton
         |> AsyncResult.bind (
-            getStream >> 
-            AsyncResult.mapError DomainError.DatabaseError)
+            getStream
+            >> Async.Catch
+            >> Async.map Result.ofChoice   
+            >> AsyncResult.mapError DomainError.DatabaseError)
         |> AsyncResult.bind (
             Async.singleton 
             >> AsyncResult.requireSome DomainError.StreamNotFound)
@@ -34,6 +38,8 @@ module Service =
         |> Async.singleton
         |> AsyncResult.bind (
             getSnapshots 
+            >> Async.Catch
+            >> Async.map Result.ofChoice
             >> AsyncResult.mapError DomainError.DatabaseError)
 
     let getEvents (getEvents : EventStore.DataAccessTypes.GetEvents) (query : UnvalidatedEventsQuery) = 
@@ -43,7 +49,9 @@ module Service =
         |> Result.mapError DomainError.ValidationError
         |> Async.singleton
         |> AsyncResult.bind (fun (streamName, startAtVersion) -> 
-            getEvents streamName startAtVersion 
+            getEvents streamName startAtVersion
+            |> Async.Catch
+            |> Async.map Result.ofChoice 
             |> AsyncResult.mapError DomainError.DatabaseError)
 
     let deleteSnapshots (deleteSnapshots : EventStore.DataAccessTypes.DeleteSnapshots) (query : UnvalidatedSnapshotsQuery) =
@@ -54,6 +62,8 @@ module Service =
         |> Async.singleton
         |> AsyncResult.bind (
             deleteSnapshots 
+            >> Async.Catch
+            >> Async.map Result.ofChoice
             >> AsyncResult.mapError DomainError.DatabaseError)
 
     let createSnapshot (getStream : EventStore.DataAccessTypes.GetStream) (createSnapshot : EventStore.DataAccessTypes.CreateSnapshot) (model : UnvalidatedCreateSnapshot) =        
@@ -72,6 +82,8 @@ module Service =
         |> AsyncResult.bind (fun model ->
             let streamName = String256.value model.StreamName |> StreamName
             getStream streamName
+            |> Async.Catch
+            |> Async.map Result.ofChoice  
             |> AsyncResult.mapError DomainError.DatabaseError
             |> AsyncResult.bind (fun streamOption ->
                 Async.singleton streamOption
@@ -79,6 +91,8 @@ module Service =
                 |> AsyncResult.bind (fun stream -> 
                     toSnapshot model stream 
                     |> createSnapshot 
+                    |> Async.Catch
+                    |> Async.map Result.ofChoice
                     |> AsyncResult.mapError DomainError.DatabaseError)))
         
 
@@ -115,10 +129,14 @@ module Service =
         |> AsyncResult.bind (fun model ->
             let streamName = String256.value model.StreamName |> StreamName
             getStream streamName
+            |> Async.Catch
+            |> Async.map Result.ofChoice  
             |> AsyncResult.mapError DomainError.DatabaseError
             |> AsyncResult.bind (fun streamOption ->
                 toEvents model streamOption 
                 |> Async.singleton
                 |> AsyncResult.bind (fun (stream, events) ->
                     appendEvents stream events 
+                    |> Async.Catch
+                    |> Async.map Result.ofChoice
                     |> AsyncResult.mapError DomainError.DatabaseError)))

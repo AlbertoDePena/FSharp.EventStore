@@ -32,9 +32,7 @@ let isDatabaseErrorResult result =
 let ``Get All Streams with data access error should yield DomainError.DatabaseError`` () =
     
     let dbCall : GetAllStreams =
-        fun () -> 
-            Error (RepositoryException "DB error") 
-            |> Async.singleton
+        fun () -> async { return (failwith "DB error") }
     
     let computation =  async {
         let! result = Service.getAllStreams dbCall

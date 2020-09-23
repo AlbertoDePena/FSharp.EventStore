@@ -34,18 +34,16 @@ type StreamName = StreamName of string
 
 type Version = Version of int32
 
-type RepositoryException = exn
+type GetStream = StreamName -> Async<Stream option>
 
-type GetStream = StreamName -> Async<Result<Stream option, RepositoryException>>
+type GetAllStreams = unit -> Async<Stream list>
 
-type GetAllStreams = unit -> Async<Result<Stream list, RepositoryException>>
+type GetEvents = StreamName -> Version -> Async<Event list>
 
-type GetEvents = StreamName -> Version -> Async<Result<Event list, RepositoryException>>
+type GetSnapshots = StreamName -> Async<Snapshot list>
 
-type GetSnapshots = StreamName -> Async<Result<Snapshot list, RepositoryException>>
+type DeleteSnapshots = StreamName -> Async<unit>
 
-type DeleteSnapshots = StreamName -> Async<Result<unit, RepositoryException>>
+type AppendEvents = Stream -> Event list -> Async<unit>
 
-type AppendEvents = Stream -> Event list -> Async<Result<unit, RepositoryException>>
-
-type CreateSnapshot = Snapshot -> Async<Result<unit, RepositoryException>>
+type CreateSnapshot = Snapshot -> Async<unit>
