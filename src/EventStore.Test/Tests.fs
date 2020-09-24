@@ -29,7 +29,7 @@ let isDatabaseErrorResult result =
     | _ -> false
 
 [<Fact>]
-let ``Get All Streams with data access error should yield DomainError.DatabaseError`` () =
+let getAllStreams_with_data_access_error_should_yield_DatabaseError () = // fsharplint:disable-line
     
     let dbCall : GetAllStreams =
         fun () -> async { return (failwith "DB error") }
@@ -41,6 +41,42 @@ let ``Get All Streams with data access error should yield DomainError.DatabaseEr
         Assert.False(isInvalidVersionResult result)
         Assert.False(isStreamNotFoundResult result)
         Assert.False(isValidationErrorResult result)
+    }
+
+    Async.AsTask computation
+
+[<Fact>]
+let getStream_with_data_access_error_should_yield_DatabaseError () = // fsharplint:disable-line
+    
+    let dbCall : GetStream =
+        fun _ -> async { return (failwith "DB error") }
+    
+    let computation =  async {
+        let query : UnvalidatedStreamQuery = { StreamName =  "Some stream" }
+        let! result = Service.getStream dbCall query
+
+        Assert.True(isDatabaseErrorResult result)
+        Assert.False(isInvalidVersionResult result)
+        Assert.False(isStreamNotFoundResult result)
+        Assert.False(isValidationErrorResult result)
+    }
+
+    Async.AsTask computation
+
+[<Fact>]
+let getStream_without_stream_name_should_yield_ValidationError () = // fsharplint:disable-line
+    
+    let dbCall : GetStream =
+        fun _ -> async { return (failwith "DB error") }
+    
+    let computation =  async {
+        let query : UnvalidatedStreamQuery = { StreamName =  "" }
+        let! result = Service.getStream dbCall query
+
+        Assert.False(isDatabaseErrorResult result)
+        Assert.False(isInvalidVersionResult result)
+        Assert.False(isStreamNotFoundResult result)
+        Assert.True(isValidationErrorResult result)
     }
 
     Async.AsTask computation
