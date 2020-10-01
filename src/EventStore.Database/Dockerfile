@@ -8,7 +8,13 @@ RUN dotnet restore
 
 COPY . ./
 
-RUN dotnet publish --configuration Release --output ./output --runtime alpine-x64 --self-contained true /p:PublishTrimmed=true /p:PublishSingleFile=true
+RUN dotnet publish \
+    --configuration Release \
+    --output ./output \
+    --runtime alpine-x64 \
+    --self-contained true \
+    /p:PublishTrimmed=true \
+    /p:PublishSingleFile=true
 
 FROM mcr.microsoft.com/dotnet/core/runtime-deps:3.1-alpine AS runtime
 
